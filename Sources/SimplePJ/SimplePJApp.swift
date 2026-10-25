@@ -176,6 +176,12 @@ struct SimplePJApp: App {
             Button(L("Raccourcis clavier", "Keyboard Shortcuts")) { model.showShortcuts = true }
                 .keyboardShortcut("/", modifiers: [.command])
             Button(L("Guide OSC & HTTP", "OSC & HTTP Guide")) { model.showOSCGuide = true }
+            Divider()
+            Button(L("Site web Simple Apps (adrien-m.net/software)", "Simple Apps Website (adrien-m.net/software)")) {
+                if let url = URL(string: "https://adrien-m.net/software") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
         }
     }
 }

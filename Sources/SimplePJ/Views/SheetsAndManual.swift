@@ -460,9 +460,29 @@ struct AboutSheet: View {
 
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Adrien Mondot · cie Adrien M")
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(Theme.text.swiftUI)
+                    HStack(spacing: 6) {
+                        Text("Adrien Mondot ·")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(Theme.text.swiftUI)
+                        Button {
+                            if let url = URL(string: "https://adrien-m.net") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("cie Adrien M")
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                    .underline()
+                                Text("(adrien-m.net)")
+                                    .font(.system(size: 10.5, design: .monospaced))
+                                Image(systemName: "arrow.up.right.square")
+                                    .font(.system(size: 9.5))
+                            }
+                            .foregroundStyle(Theme.accent.swiftUI)
+                        }
+                        .buttonStyle(.plain)
+                        .help("https://adrien-m.net")
+                    }
                     Text(L("Licence publique générale GNU (GPL v3+). Zéro dépendance externe, aucune télémétrie.", "GNU General Public License (GPL v3+). Zero external dependencies, zero telemetry."))
                         .font(.system(size: 10.5))
                         .foregroundStyle(Theme.textFaint.swiftUI)
