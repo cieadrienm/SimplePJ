@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dictionary SYSTEM "file://localhost/System/Library/DTDs/sdef.dtd">
+<dictionary title="SimplePJ Terminology">
+	<suite name="ProjectorManager Suite" code="PJst" description="SimplePJ &amp; ProjectorManager compatible AppleScript commands for PJLink projectors.">
+		<command name="PowerOn" code="PJstPwr1" description="Power on a projector (1..N) or all projectors (0).">
+			<cocoa class="SimplePJScriptCommand"/>
+			<direct-parameter description="Projector index (1..N), or 0 for all projectors.">
+				<type type="integer"/>
+			</direct-parameter>
+			<result type="text" description="Status message"/>
+		</command>
+		<command name="PowerOff" code="PJstPwr0" description="Power off / standby a projector (1..N) or all projectors (0).">
+			<cocoa class="SimplePJScriptCommand"/>
+			<direct-parameter description="Projector index (1..N), or 0 for all projectors.">
+				<type type="integer"/>
+			</direct-parameter>
+			<result type="text" description="Status message"/>
+		</command>
+		<command name="AvMute" code="PJstAvM1" description="Close shutter / AV Mute (AVMT 31) on a projector (1..N) or all projectors (0).">
+			<cocoa class="SimplePJScriptCommand"/>
+			<direct-parameter description="Projector index (1..N), or 0 for all projectors.">
+				<type type="integer"/>
+			</direct-parameter>
+			<result type="text" description="Status message"/>
+		</command>
+		<command name="AvUnMute" code="PJstAvM0" description="Open shutter / AV Unmute (AVMT 30) on a projector (1..N) or all projectors (0).">
+			<cocoa class="SimplePJScriptCommand"/>
+			<direct-parameter description="Projector index (1..N), or 0 for all projectors.">
+				<type type="integer"/>
+			</direct-parameter>
+			<result type="text" description="Status message"/>
+		</command>
+		<command name="Inpt" code="PJstInpt" description="Switch video input: {inputCode, projectorIndex} (e.g. {31, 0} for HDMI 1 on all projectors).">
+			<cocoa class="SimplePJScriptCommand"/>
+			<direct-parameter description="List of 2 integers: {inputCode, projectorIndex}">
+				<type type="integer" list="yes"/>
+			</direct-parameter>
+			<result type="text" description="Status message"/>
+		</command>
+	</suite>
+</dictionary>
