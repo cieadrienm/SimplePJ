@@ -135,6 +135,21 @@ struct StatusBar: View {
                     Text(AppVersion.current.shortLabel).foregroundStyle(Theme.textDim.swiftUI)
                 }
                 .buttonStyle(.plain).help(L("À propos de SimplePJ \(AppVersion.current.description)", "About SimplePJ \(AppVersion.current.description)"))
+
+                if let rel = model.updater.availableRelease {
+                    Button {
+                        model.showUpdater = true
+                    } label: {
+                        Text(L("↑ MAJ v\(rel.version)", "↑ Update v\(rel.version)"))
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundStyle(Theme.background.swiftUI)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1.5)
+                            .background(Capsule().fill(Theme.accent.swiftUI))
+                    }
+                    .buttonStyle(.plain)
+                    .help(L("Une mise à jour SimplePJ v\(rel.version) est disponible", "SimplePJ v\(rel.version) update is available"))
+                }
             }
             .font(.system(size: 10.5, design: .monospaced))
             .foregroundStyle(Theme.textFaint.swiftUI)

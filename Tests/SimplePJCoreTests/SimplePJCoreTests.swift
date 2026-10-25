@@ -182,4 +182,46 @@ struct SimplePJCoreTests {
         let fromData = ProjectorManagerImporter.parsePlistData(plistData)
         #expect(fromData == entries)
     }
+
+    @Test("SimpleUpdater compares semantic versions and parses manifest & GitHub releases")
+    func simpleUpdaterVersionAndFeedParsing() throws {
+        #expect(SimpleUpdater.isNewer(candidateVersion: "1.1.0", thanVersion: "1.0.0"))
+        #expect(SimpleUpdater.isNewer(candidateVersion: "v1.0.2", thanVersion: "1.0.1"))
+        #expect(!SimpleUpdater.isNewer(candidateVersion: "1.0.0", thanVersion: "1.0.0"))
+        #expect(SimpleUpdater.isNewer(candidateVersion: "1.0.0", candidateBuild: 5, thanVersion: "1.0.0", currentBuild: 4))
+
+        let familyJSON = """
+        {
+          "net.cieadrienm.simplepj": {
+            "version": "1.2.0",
+            "build": 15,
+            "url": "https://example.com/SimplePJ-1.2.0.zip",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "notes_fr": "Nouveautés plateau",
+            "notes_en": "Stage improvements"
+          }
+        }
+        """.data(using: .utf8)!
+        let parsedManifest = try SimpleUpdater.parseRelease(from: familyJSON, bundleID: "net.cieadrienm.simplepj", appName: "SimplePJ")
+        #expect(parsedManifest.version == "1.2.0")
+        #expect(parsedManifest.build == 15)
+        #expect(parsedManifest.sha256 == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+
+        let githubJSON = """
+        {
+          "tag_name": "v1.3.0",
+          "body": "Release notes\\nSHA256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "assets": [
+            {
+              "name": "SimplePJ-1.3.0.zip",
+              "browser_download_url": "https://github.com/cieadrienm/SimplePJ/releases/download/v1.3.0/SimplePJ-1.3.0.zip"
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+        let parsedGitHub = try SimpleUpdater.parseRelease(from: githubJSON, bundleID: "net.cieadrienm.simplepj", appName: "SimplePJ")
+        #expect(parsedGitHub.version == "1.3.0")
+        #expect(parsedGitHub.sha256 == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+        #expect(SimpleUpdater.sha256Hex(of: Data()) == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+    }
 }

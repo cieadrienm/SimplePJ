@@ -41,6 +41,7 @@ final class AppModel {
     }
 
     let fleet: FleetController
+    let updater: SimpleUpdater
 
     var language: AppLanguage = Localization.current {
         didSet {
@@ -60,6 +61,7 @@ final class AppModel {
     var showShortcuts: Bool = false
     var showHelp: Bool = false
     var showAbout: Bool = false
+    var showUpdater: Bool = false
     var renamingRange: SavedRange? = nil
     var powerConfirm: PowerConfirmRequest? = nil
     var alert: AlertItem? = nil
@@ -77,6 +79,14 @@ final class AppModel {
 
     init(startServices: Bool = true, persistEnabled: Bool = true) {
         self.fleet = FleetController(startServices: startServices, persistEnabled: persistEnabled)
+        self.updater = SimpleUpdater(
+            appName: "SimplePJ",
+            bundleID: "net.cieadrienm.simplepj",
+            githubRepo: "cieadrienm/SimplePJ",
+            currentVersion: AppVersion.current.version,
+            currentBuild: AppVersion.current.build.flatMap(Int.init) ?? 1,
+            startAutoCheck: startServices
+        )
     }
 
     var inspectedProjector: Projector? {

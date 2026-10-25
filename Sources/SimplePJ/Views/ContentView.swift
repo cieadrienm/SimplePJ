@@ -77,6 +77,11 @@ struct ContentView: View {
                 model.showAbout = false
             }
         }
+        .sheet(isPresented: $model.showUpdater) {
+            UpdateSheet(model: model) {
+                model.showUpdater = false
+            }
+        }
         .sheet(item: $model.renamingRange) { saved in
             RenameRangeSheet(range: saved) { name in
                 model.fleet.renameSavedRange(saved.range, to: name)

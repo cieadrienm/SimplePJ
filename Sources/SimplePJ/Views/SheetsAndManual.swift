@@ -468,6 +468,23 @@ struct AboutSheet: View {
                         .foregroundStyle(Theme.textFaint.swiftUI)
                 }
                 Spacer()
+                Button {
+                    close()
+                    DispatchQueue.main.async {
+                        model.showUpdater = true
+                        model.updater.checkForUpdates(silent: false)
+                    }
+                } label: {
+                    Label(
+                        model.updater.availableRelease.map { L("↑ MAJ v\($0.version)", "↑ Update v\($0.version)") }
+                            ?? L("Mises à jour…", "Check for Updates…"),
+                        systemImage: "arrow.down.circle"
+                    )
+                    .font(.system(size: 11.5))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(model.updater.availableRelease != nil ? Theme.accent.swiftUI : Theme.textDim.swiftUI)
+
                 Button { close(); openHelp() } label: {
                     Label(L("Guide (⌘?)", "Guide (⌘?)"), systemImage: "book.closed").font(.system(size: 11.5))
                 }
@@ -895,6 +912,7 @@ struct PreferencesView: View {
 
     var body: some View {
         @Bindable var fleet = model.fleet
+        @Bindable var updater = model.updater
         VStack(alignment: .leading, spacing: 16) {
             SectionHeader(L("Langue & Surveillance PJLink", "Language & PJLink Polling"))
             FieldRow(L("Langue", "Language"), width: 170) {
@@ -914,6 +932,16 @@ struct PreferencesView: View {
                 }
                 .labelsHidden()
                 .frame(width: 170)
+            }
+            HStack(spacing: 10) {
+                Toggle(L("Vérifier les mises à jour au lancement", "Check for updates on launch"), isOn: $updater.autoCheckOnLaunch)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Theme.text.swiftUI)
+                Spacer()
+                TextButton(title: L("Vérifier maintenant…", "Check Now…"), symbol: "arrow.down.circle", compact: true) {
+                    model.showUpdater = true
+                    model.updater.checkForUpdates(silent: false)
+                }
             }
             Divider().overlay(Theme.separator.swiftUI)
             SectionHeader(L("Ports OSC, API HTTP & MCP", "OSC, HTTP API & MCP Ports"))
@@ -964,7 +992,7 @@ struct PreferencesView: View {
             Spacer()
         }
         .padding(20)
-        .frame(width: 460, height: 425)
+        .frame(width: 460, height: 460)
         .background(Theme.panel.swiftUI)
         .preferredColorScheme(.dark)
         .onAppear {
@@ -1019,5 +1047,133 @@ struct RenameRangeSheet: View {
         .background(Theme.panel.swiftUI)
         .preferredColorScheme(.dark)
         .onAppear { name = range.name ?? "" }
+    }
+}
+
+// MARK: - Update Sheet (SimpleUpdater)
+
+struct UpdateSheet: View {
+    @Bindable var model: AppModel
+    let close: () -> Void
+
+    var body: some View {
+        let updater = model.updater
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                ProjectorHeroGraphic(active: updater.state == .checking, size: 46)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L("Mises à jour — SimplePJ", "Software Update — SimplePJ"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Theme.text.swiftUI)
+                    Text(L("Version installée : v\(updater.currentVersion) (build \(updater.currentBuild))", "Installed version: v\(updater.currentVersion) (build \(updater.currentBuild))"))
+                        .font(.system(size: 11.5, design: .monospaced))
+                        .foregroundStyle(Theme.textDim.swiftUI)
+                }
+                Spacer()
+            }
+
+            Rectangle().fill(Theme.separator.swiftUI).frame(height: 1)
+
+            switch updater.state {
+            case .idle, .checking:
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text(L("Recherche de mises à jour en cours…", "Checking for updates…"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textDim.swiftUI)
+                }
+                .padding(.vertical, 14)
+
+            case .upToDate(let v):
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Theme.alive.swiftUI)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L("SimplePJ v\(v) est à jour.", "SimplePJ v\(v) is up to date."))
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(Theme.text.swiftUI)
+                        Text(L("Vous utilisez la dernière version disponible.", "You are running the latest available version."))
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.textDim.swiftUI)
+                    }
+                }
+                .padding(.vertical, 10)
+
+            case .updateAvailable(let rel):
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Chip(text: L("NOUVELLE VERSION v\(rel.version)", "NEW VERSION v\(rel.version)"), tint: Theme.accent.swiftUI, filled: true)
+                        Spacer()
+                    }
+                    ScrollView {
+                        Text(rel.localizedNotes)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(Theme.text.swiftUI)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(minHeight: 70, maxHeight: 140)
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.04)))
+                }
+
+            case .downloading(let progress):
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(L("Téléchargement de la mise à jour…", "Downloading update…"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.text.swiftUI)
+                    ProgressView(value: progress)
+                        .tint(Theme.accent.swiftUI)
+                }
+                .padding(.vertical, 10)
+
+            case .installing:
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text(L("Vérification de la signature et installation…", "Verifying code signature and installing…"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.text.swiftUI)
+                }
+                .padding(.vertical, 10)
+
+            case .failed(let message):
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.warning.swiftUI)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(L("Impossible de vérifier ou d'installer la mise à jour", "Could not check or install update"))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.text.swiftUI)
+                        Text(message)
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.textDim.swiftUI)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.vertical, 6)
+            }
+
+            HStack {
+                TextButton(title: L("Rechercher à nouveau", "Check Again"), symbol: "arrow.clockwise", compact: true) {
+                    updater.checkForUpdates(silent: false)
+                }
+                Spacer()
+                if case .updateAvailable(let rel) = updater.state {
+                    Button(L("Plus tard", "Later"), action: close)
+                    TextButton(title: L("Mettre à jour et relancer", "Update & Relaunch"), symbol: "arrow.down.circle.fill", prominent: true) {
+                        updater.downloadAndInstall(rel)
+                    }
+                    .keyboardShortcut(.defaultAction)
+                } else {
+                    Button(L("Fermer", "Close"), action: close)
+                        .keyboardShortcut(.defaultAction)
+                }
+            }
+        }
+        .padding(20)
+        .frame(width: 440)
+        .background(Theme.panel.swiftUI)
+        .preferredColorScheme(.dark)
     }
 }

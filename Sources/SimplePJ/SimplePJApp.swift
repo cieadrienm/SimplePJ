@@ -27,6 +27,10 @@ struct SimplePJApp: App {
         let _ = model.language
         CommandGroup(replacing: .appInfo) {
             Button(L("À propos de SimplePJ", "About SimplePJ")) { model.showAbout = true }
+            Button(L("Rechercher des mises à jour…", "Check for Updates…")) {
+                model.showUpdater = true
+                model.updater.checkForUpdates(silent: false)
+            }
         }
 
         CommandGroup(replacing: .newItem) {
