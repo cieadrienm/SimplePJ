@@ -79,12 +79,12 @@ enum Snapshot {
             SyntheticFleet.load(into: model)
             png = renderOffscreenPNG(AboutSheet(model: model, openHelp: {}, close: {}), size: CGSize(width: 650, height: 470))
         case "help":
-            png = renderOffscreenPNG(HelpManualSheet(openShortcuts: {}, close: {}), size: CGSize(width: 720, height: 480))
+            png = renderOffscreenPNG(HelpManualSheet(openShortcuts: {}, close: {}), size: CGSize(width: 760, height: 520))
         case "shortcuts":
             png = renderOffscreenPNG(ShortcutsSheet(close: {}), size: CGSize(width: 860, height: 420))
         case "osc":
             SyntheticFleet.load(into: model)
-            png = renderOffscreenPNG(OSCGuideSheet(model: model, close: {}), size: CGSize(width: 740, height: 480))
+            png = renderOffscreenPNG(OSCGuideSheet(model: model, close: {}), size: CGSize(width: 760, height: 480))
         default:
             SyntheticFleet.load(into: model)
             model.viewMode = .cards
