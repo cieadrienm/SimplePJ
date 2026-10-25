@@ -12,8 +12,8 @@ enum MainViewMode: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .cards: return "Plateau"
-        case .table: return "Liste"
+        case .cards: return L("Plateau", "Stage")
+        case .table: return L("Liste", "List")
         }
     }
 
@@ -41,6 +41,12 @@ final class AppModel {
     }
 
     let fleet: FleetController
+
+    var language: AppLanguage = Localization.current {
+        didSet {
+            Localization.current = language
+        }
+    }
 
     var viewMode: MainViewMode = .cards
     var showSidebar: Bool = true
@@ -130,14 +136,14 @@ final class AppModel {
         guard !fleet.selection.isEmpty else { return }
         let count = fleet.selection.count
         fleet.removeProjectors(ids: fleet.selection)
-        flash("\(Format.count(count, "projecteur")) retiré\(count > 1 ? "s" : "")")
+        flash(L("\(Format.count(count, "projecteur")) retiré\(count > 1 ? "s" : "")", "\(count) projector\(count > 1 ? "s" : "") removed"))
     }
 
     func copySelectedIPs() {
         let ips = fleet.selectedProjectors.map(\.endpointLabel).joined(separator: "\n")
         guard !ips.isEmpty else { return }
         Self.copyToPasteboard(ips)
-        flash("Adresse\(fleet.selectedProjectors.count > 1 ? "s" : "") copiée\(fleet.selectedProjectors.count > 1 ? "s" : "")")
+        flash(L("Adresse\(fleet.selectedProjectors.count > 1 ? "s" : "") copiée\(fleet.selectedProjectors.count > 1 ? "s" : "")", "Address\(fleet.selectedProjectors.count > 1 ? "es" : "") copied"))
     }
 
     static func copyToPasteboard(_ text: String) {
@@ -162,14 +168,14 @@ final class AppModel {
                 sent += 1
             }
         }
-        flash("Paquet Wake-on-LAN envoyé à \(Format.count(sent, "projecteur"))")
+        flash(L("Paquet Wake-on-LAN envoyé à \(Format.count(sent, "projecteur"))", "Wake-on-LAN packet sent to \(sent) projector\(sent > 1 ? "s" : "")"))
     }
 
     // MARK: - Open / Save `.simplepj` Fleet & Export
 
     func openFleetPanel() {
         let panel = NSOpenPanel()
-        panel.title = "Ouvrir un parc SimplePJ"
+        panel.title = L("Ouvrir un parc SimplePJ", "Open SimplePJ Fleet")
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -182,11 +188,14 @@ final class AppModel {
     func importFromProjectorManager() {
         let count = fleet.importFromProjectorManager()
         if count > 0 {
-            flash("\(Format.count(count, "projecteur")) importé\(count > 1 ? "s" : "") depuis ProjectorManager")
+            flash(L("\(Format.count(count, "projecteur")) importé\(count > 1 ? "s" : "") depuis ProjectorManager", "\(count) projector\(count > 1 ? "s" : "") imported from ProjectorManager"))
         } else {
             alert = AlertItem(
-                title: "Aucun projecteur ProjectorManager",
-                message: "Aucune liste de vidéoprojecteurs n'a été trouvée dans les préférences de ProjectorManager (ch.sigmasix.ProjectorManager)."
+                title: L("Aucun projecteur ProjectorManager", "No ProjectorManager projectors found"),
+                message: L(
+                    "Aucune liste de vidéoprojecteurs n'a été trouvée dans les préférences de ProjectorManager (ch.sigmasix.ProjectorManager).",
+                    "No saved projector list was found in ProjectorManager preferences (ch.sigmasix.ProjectorManager)."
+                )
             )
         }
     }
@@ -204,32 +213,32 @@ final class AppModel {
                 }
                 fleet.saveFleet()
                 fleet.refreshAll(includeIdentity: true)
-                flash("Parc « \(url.deletingPathExtension().lastPathComponent) » chargé (\(Format.count(doc.projectors.count, "projecteur")))")
+                flash(L("Parc « \(url.deletingPathExtension().lastPathComponent) » chargé (\(Format.count(doc.projectors.count, "projecteur")))", "Fleet \"\(url.deletingPathExtension().lastPathComponent)\" loaded (\(doc.projectors.count) projector\(doc.projectors.count > 1 ? "s" : ""))"))
             } else {
                 let pmEntries = ProjectorManagerImporter.parsePlistData(data)
                 if !pmEntries.isEmpty {
                     let count = fleet.importEntries(pmEntries, sourceLabel: url.lastPathComponent)
-                    flash("\(Format.count(count, "projecteur")) importé\(count > 1 ? "s" : "") depuis \(url.lastPathComponent)")
+                    flash(L("\(Format.count(count, "projecteur")) importé\(count > 1 ? "s" : "") depuis \(url.lastPathComponent)", "\(count) projector\(count > 1 ? "s" : "") imported from \(url.lastPathComponent)"))
                 } else if let text = String(data: data, encoding: .utf8) {
                     let endpoints = IPv4Range.parseEndpoints(text)
                     guard !endpoints.isEmpty else {
-                        throw NSError(domain: "SimplePJ", code: 1, userInfo: [NSLocalizedDescriptionKey: "Aucune adresse IP valide trouvée dans \(url.lastPathComponent)"])
+                        throw NSError(domain: "SimplePJ", code: 1, userInfo: [NSLocalizedDescriptionKey: L("Aucune adresse IP valide trouvée dans \(url.lastPathComponent)", "No valid IP address found in \(url.lastPathComponent)")])
                     }
                     for ep in endpoints {
                         fleet.addProjector(ip: ep.ip, port: ep.port)
                     }
-                    flash("\(Format.count(endpoints.count, "projecteur")) importé\(endpoints.count > 1 ? "s" : "")")
+                    flash(L("\(Format.count(endpoints.count, "projecteur")) importé\(endpoints.count > 1 ? "s" : "")", "\(endpoints.count) projector\(endpoints.count > 1 ? "s" : "") imported"))
                 }
             }
         } catch {
-            alert = AlertItem(title: "Ouverture impossible", message: error.localizedDescription)
+            alert = AlertItem(title: L("Ouverture impossible", "Cannot open file"), message: error.localizedDescription)
         }
     }
 
     func saveFleetPanel() {
         let panel = NSSavePanel()
-        panel.title = "Enregistrer le parc de vidéoprojecteurs"
-        panel.nameFieldStringValue = "Plateau.\(FleetDocument.fileExtension)"
+        panel.title = L("Enregistrer le parc de vidéoprojecteurs", "Save Projector Fleet")
+        panel.nameFieldStringValue = "\(L("Plateau", "Stage")).\(FleetDocument.fileExtension)"
         if panel.runModal() == .OK, let url = panel.url {
             do {
                 let doc = FleetDocument(
@@ -239,9 +248,9 @@ final class AppModel {
                 )
                 let data = try doc.encodeJSON()
                 try data.write(to: url, options: .atomic)
-                flash("Parc enregistré dans \(url.lastPathComponent)")
+                flash(L("Parc enregistré dans \(url.lastPathComponent)", "Fleet saved to \(url.lastPathComponent)"))
             } catch {
-                alert = AlertItem(title: "Enregistrement impossible", message: error.localizedDescription)
+                alert = AlertItem(title: L("Enregistrement impossible", "Cannot save file"), message: error.localizedDescription)
             }
         }
     }
@@ -251,22 +260,22 @@ final class AppModel {
         let text = FleetExporter.render(list, format: exportFormat)
         Self.copyToPasteboard(text)
         showExport = false
-        flash("Export copié dans le presse-papiers")
+        flash(L("Export copié dans le presse-papiers", "Export copied to clipboard"))
     }
 
     func saveExport() {
         let list = exportVisibleOnly ? fleet.visibleProjectors : fleet.projectors
         let text = FleetExporter.render(list, format: exportFormat)
         let panel = NSSavePanel()
-        panel.title = "Exporter la fiche des vidéoprojecteurs"
-        panel.nameFieldStringValue = "Videoprojecteurs.\(exportFormat.defaultExtension)"
+        panel.title = L("Exporter la fiche des vidéoprojecteurs", "Export Projector Sheet")
+        panel.nameFieldStringValue = "\(L("Videoprojecteurs", "Projectors")).\(exportFormat.defaultExtension)"
         if panel.runModal() == .OK, let url = panel.url {
             do {
                 try Data(text.utf8).write(to: url, options: .atomic)
                 showExport = false
-                flash("Export enregistré dans \(url.lastPathComponent)")
+                flash(L("Export enregistré dans \(url.lastPathComponent)", "Export saved to \(url.lastPathComponent)"))
             } catch {
-                alert = AlertItem(title: "Export impossible", message: error.localizedDescription)
+                alert = AlertItem(title: L("Export impossible", "Cannot export"), message: error.localizedDescription)
             }
         }
     }

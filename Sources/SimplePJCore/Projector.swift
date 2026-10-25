@@ -10,11 +10,11 @@ public enum ProjectorConnectionState: String, Codable, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
-        case .online: return "En ligne"
-        case .polling: return "Interrogation…"
-        case .authRequired: return "Mot de passe requis"
-        case .offline: return "Hors ligne"
-        case .unknown: return "Non interrogé"
+        case .online: return L("En ligne", "Online")
+        case .polling: return L("Interrogation…", "Polling…")
+        case .authRequired: return L("Mot de passe requis", "Password required")
+        case .offline: return L("Hors ligne", "Offline")
+        case .unknown: return L("Non interrogé", "Not polled")
         }
     }
 }

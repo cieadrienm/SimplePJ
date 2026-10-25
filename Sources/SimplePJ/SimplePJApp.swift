@@ -24,57 +24,58 @@ struct SimplePJApp: App {
 
     @CommandsBuilder
     private func appCommands(model: AppModel) -> some Commands {
+        let _ = model.language
         CommandGroup(replacing: .appInfo) {
-            Button("À propos de SimplePJ") { model.showAbout = true }
+            Button(L("À propos de SimplePJ", "About SimplePJ")) { model.showAbout = true }
         }
 
         CommandGroup(replacing: .newItem) {
-            Button("Ajouter un vidéoprojecteur…") { model.showAddProjector = true }
+            Button(L("Ajouter un vidéoprojecteur…", "Add Projector…")) { model.showAddProjector = true }
                 .keyboardShortcut("n", modifiers: [.command])
-            Button(model.fleet.isScanning ? "Découverte en cours…" : "Découvrir le réseau (:4352)") {
+            Button(model.fleet.isScanning ? L("Découverte en cours…", "Scanning Network…") : L("Découvrir le réseau (:4352)", "Discover Network (:4352)")) {
                 model.fleet.startDiscovery()
             }
             .keyboardShortcut("d", modifiers: [.command, .shift])
             .disabled(!model.fleet.canStartScan)
-            Button("Arrêter la découverte") { model.fleet.stopDiscovery() }
+            Button(L("Arrêter la découverte", "Stop Discovery")) { model.fleet.stopDiscovery() }
                 .keyboardShortcut(".", modifiers: [.command])
                 .disabled(!model.fleet.isScanning)
             Divider()
-            Button(model.fleet.isDemoRigActive ? "Arrêter le plateau simulé (4 VP)" : "Lancer un plateau simulé (4 VP)") {
+            Button(model.fleet.isDemoRigActive ? L("Arrêter le plateau simulé (4 VP)", "Stop Simulated Stage Rig (4 PJ)") : L("Lancer un plateau simulé (4 VP)", "Start Simulated Stage Rig (4 PJ)")) {
                 model.fleet.toggleSimulatedStageRig()
             }
             Divider()
-            Button("Ouvrir un parc (.simplepj)…") { model.openFleetPanel() }
+            Button(L("Ouvrir un parc (.simplepj)…", "Open Fleet (.simplepj)…")) { model.openFleetPanel() }
                 .keyboardShortcut("o", modifiers: [.command])
-            Button("Importer depuis ProjectorManager") { model.importFromProjectorManager() }
+            Button(L("Importer depuis ProjectorManager", "Import from ProjectorManager")) { model.importFromProjectorManager() }
                 .keyboardShortcut("i", modifiers: [.command, .shift])
-            Button("Enregistrer le parc (.simplepj)…") { model.saveFleetPanel() }
+            Button(L("Enregistrer le parc (.simplepj)…", "Save Fleet (.simplepj)…")) { model.saveFleetPanel() }
                 .keyboardShortcut("s", modifiers: [.command])
                 .disabled(model.fleet.projectors.isEmpty)
-            Button("Exporter la fiche technique…") { model.showExport = true }
+            Button(L("Exporter la fiche technique…", "Export Technical Sheet…")) { model.showExport = true }
                 .keyboardShortcut("e", modifiers: [.command])
                 .disabled(model.fleet.projectors.isEmpty)
         }
 
         CommandGroup(replacing: .pasteboard) {
-            Button("Copier l'adresse IP") { model.copySelectedIPs() }
+            Button(L("Copier l'adresse IP", "Copy IP Address")) { model.copySelectedIPs() }
                 .keyboardShortcut("c", modifiers: [.command])
                 .disabled(model.fleet.selection.isEmpty)
-            Button("Tout sélectionner") { model.selectAll() }
+            Button(L("Tout sélectionner", "Select All")) { model.selectAll() }
                 .keyboardShortcut("a", modifiers: [.command])
             Divider()
-            Button("Filtrer le parc") { model.searchFocusRequest += 1 }
+            Button(L("Filtrer le parc", "Filter Fleet")) { model.searchFocusRequest += 1 }
                 .keyboardShortcut("f", modifiers: [.command])
         }
 
-        CommandMenu("Plateau") {
-            Button("NOIR PLATEAU — Fermer les volets (AVMT 31)") {
+        CommandMenu(L("Plateau", "Stage")) {
+            Button(L("NOIR PLATEAU — Fermer les volets (AVMT 31)", "STAGE BLACKOUT — Close Shutters (AVMT 31)")) {
                 model.fleet.setShutter(closed: true)
             }
             .keyboardShortcut("b", modifiers: [.command])
             .disabled(model.fleet.activeTargets.isEmpty)
 
-            Button("Ouvrir les volets (AVMT 30)") {
+            Button(L("Ouvrir les volets (AVMT 30)", "Open Shutters (AVMT 30)")) {
                 model.fleet.setShutter(closed: false)
             }
             .keyboardShortcut("b", modifiers: [.command, .shift])
@@ -82,26 +83,26 @@ struct SimplePJApp: App {
 
             Divider()
 
-            Button("Allumer la cible (POWR 1)") {
+            Button(L("Allumer la cible (POWR 1)", "Power On Target (POWR 1)")) {
                 model.requestPower(on: true)
             }
             .disabled(model.fleet.activeTargets.isEmpty)
 
-            Button("Mettre la cible en veille (POWR 0)…") {
+            Button(L("Mettre la cible en veille (POWR 0)…", "Standby Target (POWR 0)…")) {
                 model.requestPower(on: false)
             }
             .disabled(model.fleet.activeTargets.isEmpty)
 
             Divider()
 
-            Button("Geler / Dégeler l'image (FREZ)") {
+            Button(L("Geler / Dégeler l'image (FREZ)", "Toggle Freeze (FREZ)")) {
                 let anyFrozen = model.fleet.activeTargets.contains(where: \.freeze)
                 model.fleet.setFreeze(!anyFrozen)
             }
             .keyboardShortcut("f", modifiers: [.command, .control])
             .disabled(model.fleet.activeTargets.isEmpty)
 
-            Menu("Basculer l'entrée vidéo") {
+            Menu(L("Basculer l'entrée vidéo", "Switch Video Input")) {
                 ForEach(model.fleet.commonInputsForActiveTargets) { inp in
                     Button(inp.fullLabel) {
                         model.fleet.setInput(inp.code)
@@ -112,13 +113,13 @@ struct SimplePJApp: App {
 
             Divider()
 
-            Button("Actualiser tout le parc") {
+            Button(L("Actualiser tout le parc", "Refresh Entire Fleet")) {
                 model.fleet.refreshAll(includeIdentity: true)
             }
             .keyboardShortcut("r", modifiers: [.command])
             .disabled(model.fleet.projectors.isEmpty)
 
-            Button("Nommer / #grouper le projecteur…") {
+            Button(L("Nommer / #grouper le projecteur…", "Rename / #tag Projector…")) {
                 model.revealInspector()
                 model.labelFocusRequest += 1
             }
@@ -133,7 +134,7 @@ struct SimplePJApp: App {
 
             Divider()
 
-            Button("Retirer la sélection du parc") {
+            Button(L("Retirer la sélection du parc", "Remove Selected from Fleet")) {
                 model.deleteSelected()
             }
             .keyboardShortcut(.delete, modifiers: [.command])
@@ -141,36 +142,36 @@ struct SimplePJApp: App {
         }
 
         CommandGroup(after: .toolbar) {
-            Button("Vue Plateau (Cartes)") { model.viewMode = .cards }
+            Button(L("Vue Plateau (Cartes)", "Stage View (Cards)")) { model.viewMode = .cards }
                 .keyboardShortcut("1", modifiers: [.command])
-            Button("Vue Liste (Tableau)") { model.viewMode = .table }
+            Button(L("Vue Liste (Tableau)", "List View (Table)")) { model.viewMode = .table }
                 .keyboardShortcut("2", modifiers: [.command])
             Divider()
-            Button(model.showSidebar ? "Masquer la barre latérale" : "Afficher la barre latérale") {
+            Button(model.showSidebar ? L("Masquer la barre latérale", "Hide Sidebar") : L("Afficher la barre latérale", "Show Sidebar")) {
                 model.showSidebar.toggle()
             }
             .keyboardShortcut("s", modifiers: [.command, .option])
-            Button(model.showInspector ? "Masquer l'inspecteur" : "Afficher l'inspecteur") {
+            Button(model.showInspector ? L("Masquer l'inspecteur", "Hide Inspector") : L("Afficher l'inspecteur", "Show Inspector")) {
                 model.toggleInspector()
             }
             .keyboardShortcut("i", modifiers: [.command, .option])
-            Button(model.showConsoleDrawer ? "Masquer la console PJLink" : "Afficher la console PJLink") {
+            Button(model.showConsoleDrawer ? L("Masquer la console PJLink", "Hide PJLink Console") : L("Afficher la console PJLink", "Show PJLink Console")) {
                 model.showConsoleDrawer.toggle()
             }
             .keyboardShortcut("l", modifiers: [.command, .option])
             Divider()
-            Button("Commandes OSC & API HTTP…") {
+            Button(L("Commandes OSC & API HTTP…", "OSC Commands & HTTP API…")) {
                 model.showOSCGuide = true
             }
         }
 
         CommandGroup(replacing: .help) {
-            Button("Aide SimplePJ") { model.showHelp = true }
+            Button(L("Aide SimplePJ", "SimplePJ Help")) { model.showHelp = true }
                 .keyboardShortcut("?", modifiers: [.command])
             Divider()
-            Button("Raccourcis clavier") { model.showShortcuts = true }
+            Button(L("Raccourcis clavier", "Keyboard Shortcuts")) { model.showShortcuts = true }
                 .keyboardShortcut("/", modifiers: [.command])
-            Button("Guide OSC & HTTP") { model.showOSCGuide = true }
+            Button(L("Guide OSC & HTTP", "OSC & HTTP Guide")) { model.showOSCGuide = true }
         }
     }
 }

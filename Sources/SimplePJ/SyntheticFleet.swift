@@ -226,6 +226,6 @@ enum SyntheticFleet {
             PJLinkExchange(projectorIP: "2.0.0.31", projectorTitle: "Cyclo Haut", tx: "%1AVMT 31", rx: "%1AVMT=OK", durationMs: 1.9),
             PJLinkExchange(projectorIP: "2.0.0.41", projectorTitle: "Tulle Avant-Scène", tx: "%2IRES ?", rx: "%2IRES=3840x2160", durationMs: 1.5),
         ]
-        model.fleet.statusMessage = "6 vidéoprojecteurs PJLink en ligne · 3 en projection, 2 volet fermé, 1 en veille"
+        model.fleet.statusMessage = L("6 vidéoprojecteurs PJLink en ligne · 3 en projection, 2 volet fermé, 1 en veille", "6 PJLink projectors online · 3 projecting, 2 shutter closed, 1 standby")
     }
 }

@@ -17,14 +17,14 @@ struct ConsoleDrawer: View {
                 Image(systemName: "terminal.fill")
                     .font(.system(size: 10.5))
                     .foregroundStyle(Theme.accent.swiftUI)
-                Text("CONSOLE PROTOCOLE PJLINK (TCP :4352)")
+                Text(L("CONSOLE PROTOCOLE PJLINK (TCP :4352)", "PJLINK PROTOCOL CONSOLE (TCP :4352)"))
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Theme.textDim.swiftUI)
-                Text("\(model.fleet.exchanges.count) échanges")
+                Text(L("\(model.fleet.exchanges.count) échanges", "\(model.fleet.exchanges.count) exchanges"))
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(Theme.textFaint.swiftUI)
                 Spacer()
-                Button("Effacer") {
+                Button(L("Effacer", "Clear")) {
                     model.fleet.exchanges.removeAll()
                 }
                 .buttonStyle(.plain)
@@ -49,7 +49,7 @@ struct ConsoleDrawer: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     if model.fleet.exchanges.isEmpty {
-                        Text("Aucune trame PJLink enregistrée dans cette session.")
+                        Text(L("Aucune trame PJLink enregistrée dans cette session.", "No PJLink frames recorded in this session."))
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(Theme.textFaint.swiftUI)
                             .padding(10)
@@ -106,7 +106,7 @@ struct StatusBar: View {
             }
 
             if model.fleet.pollInterval != .off {
-                Text("surveillance : \(model.fleet.pollInterval.shortLabel)")
+                Text(L("surveillance : \(model.fleet.pollInterval.shortLabel)", "polling: \(model.fleet.pollInterval.shortLabel)"))
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(Theme.textFaint.swiftUI)
             }
@@ -125,16 +125,16 @@ struct StatusBar: View {
                         .foregroundStyle(Theme.osc.swiftUI)
                 }
                 .buttonStyle(.plain)
-                .help("Guide des commandes OSC et API HTTP")
+                .help(L("Guide des commandes OSC et API HTTP", "OSC Commands and HTTP API Guide"))
 
-                Button { model.showHelp = true } label: { Text("? aide") }
-                    .buttonStyle(.plain).help("Guide d'utilisation (⌘?)")
-                Button { model.showShortcuts = true } label: { Text("⌘/ raccourcis") }
-                    .buttonStyle(.plain).help("Raccourcis clavier (⌘/)")
+                Button { model.showHelp = true } label: { Text(L("? aide", "? help")) }
+                    .buttonStyle(.plain).help(L("Guide d'utilisation (⌘?)", "User Guide (⌘?)"))
+                Button { model.showShortcuts = true } label: { Text(L("⌘/ raccourcis", "⌘/ shortcuts")) }
+                    .buttonStyle(.plain).help(L("Raccourcis clavier (⌘/)", "Keyboard Shortcuts (⌘/)"))
                 Button { model.showAbout = true } label: {
                     Text(AppVersion.current.shortLabel).foregroundStyle(Theme.textDim.swiftUI)
                 }
-                .buttonStyle(.plain).help("À propos de SimplePJ \(AppVersion.current.description)")
+                .buttonStyle(.plain).help(L("À propos de SimplePJ \(AppVersion.current.description)", "About SimplePJ \(AppVersion.current.description)"))
             }
             .font(.system(size: 10.5, design: .monospaced))
             .foregroundStyle(Theme.textFaint.swiftUI)
@@ -150,13 +150,13 @@ struct StatusBar: View {
         let total = model.fleet.projectors.count
         let online = model.fleet.onlineCount
         if total > 0 {
-            parts.append("\(online)/\(total) en ligne")
+            parts.append(L("\(online)/\(total) en ligne", "\(online)/\(total) online"))
         }
         if model.fleet.isScanning {
-            parts.append("\(model.fleet.scannedCount)/\(model.fleet.scanTotalCount) adresses")
+            parts.append(L("\(model.fleet.scannedCount)/\(model.fleet.scanTotalCount) adresses", "\(model.fleet.scannedCount)/\(model.fleet.scanTotalCount) addresses"))
         }
         if !model.fleet.selection.isEmpty {
-            parts.append(Format.count(model.fleet.selection.count, "sélectionné"))
+            parts.append(L(Format.count(model.fleet.selection.count, "sélectionné"), "\(model.fleet.selection.count) selected"))
         }
         return parts.joined(separator: " · ")
     }

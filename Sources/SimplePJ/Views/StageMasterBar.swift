@@ -19,7 +19,7 @@ struct StageMasterBar: View {
                 Image(systemName: model.fleet.selection.isEmpty ? "sparkles.tv" : "checkmark.circle.fill")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.accent.swiftUI)
-                Text("CIBLE : \(model.fleet.activeTargetsScopeLabel.uppercased())")
+                Text("\(L("CIBLE", "TARGET")) : \(model.fleet.activeTargetsScopeLabel.uppercased())")
                     .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Theme.text.swiftUI)
             }
@@ -32,7 +32,7 @@ struct StageMasterBar: View {
             // Master Shutter / Blackout controls (the most critical stage buttons)
             HStack(spacing: 6) {
                 TextButton(
-                    title: "NOIR · Fermer volets",
+                    title: L("NOIR · Fermer volets", "BLACKOUT · Close Shutters"),
                     symbol: "eye.slash.fill",
                     prominent: allClosed,
                     tint: Theme.accent.swiftUI,
@@ -41,10 +41,10 @@ struct StageMasterBar: View {
                 ) {
                     model.fleet.setShutter(closed: true, on: targets)
                 }
-                .help("Fermer le volet optique / AV Mute (31) sur la cible (⌘B)")
+                .help(L("Fermer le volet optique / AV Mute (31) sur la cible (⌘B)", "Close optical shutter / AV Mute (31) on target (⌘B)"))
 
                 TextButton(
-                    title: "Ouvrir volets",
+                    title: L("Ouvrir volets", "Open Shutters"),
                     symbol: "sun.max.fill",
                     prominent: anyProjecting && !allClosed,
                     tint: Theme.alive.swiftUI,
@@ -53,7 +53,7 @@ struct StageMasterBar: View {
                 ) {
                     model.fleet.setShutter(closed: false, on: targets)
                 }
-                .help("Ouvrir le volet optique / AV Mute (30) sur la cible (⇧⌘B)")
+                .help(L("Ouvrir le volet optique / AV Mute (30) sur la cible (⇧⌘B)", "Open optical shutter / AV Mute (30) on target (⇧⌘B)"))
             }
 
             Divider().frame(height: 16)
@@ -61,7 +61,7 @@ struct StageMasterBar: View {
             // Master Power controls
             HStack(spacing: 6) {
                 TextButton(
-                    title: "Allumer",
+                    title: L("Allumer", "Power On"),
                     symbol: "power",
                     tint: Theme.alive.swiftUI,
                     compact: true,
@@ -69,10 +69,10 @@ struct StageMasterBar: View {
                 ) {
                     model.requestPower(on: true, targets: targets)
                 }
-                .help("Allumer la lampe / le laser (POWR 1) sur la cible")
+                .help(L("Allumer la lampe / le laser (POWR 1) sur la cible", "Power on lamp / laser (POWR 1) on target"))
 
                 TextButton(
-                    title: "Veille",
+                    title: L("Veille", "Standby"),
                     symbol: "moon.zzz.fill",
                     tint: Theme.standby.swiftUI,
                     compact: true,
@@ -80,14 +80,14 @@ struct StageMasterBar: View {
                 ) {
                     model.requestPower(on: false, targets: targets)
                 }
-                .help("Mettre en veille (POWR 0) avec confirmation de sécurité (⌥-clic pour forcer sans confirmation)")
+                .help(L("Mettre en veille (POWR 0) avec confirmation de sécurité (⌥-clic pour forcer sans confirmation)", "Standby (POWR 0) with safety confirmation (⌥-click to bypass confirmation)"))
             }
 
             Divider().frame(height: 16)
 
             // Freeze toggle (Class 2) & Synchronized Input Menu
             TextButton(
-                title: anyFrozen ? "Dégeler" : "Gel",
+                title: anyFrozen ? L("Dégeler", "Unfreeze") : L("Gel", "Freeze"),
                 symbol: "snowflake",
                 prominent: anyFrozen,
                 tint: Theme.tcp.swiftUI,
@@ -96,7 +96,7 @@ struct StageMasterBar: View {
             ) {
                 model.fleet.setFreeze(!anyFrozen, on: targets)
             }
-            .help("Geler ou dégeler l'image (PJLink Classe 2 %2FREZ)")
+            .help(L("Geler ou dégeler l'image (PJLink Classe 2 %2FREZ)", "Freeze or unfreeze image (PJLink Class 2 %2FREZ)"))
 
             Menu {
                 ForEach(model.fleet.commonInputsForActiveTargets) { input in
@@ -111,7 +111,7 @@ struct StageMasterBar: View {
                     Image(systemName: "cable.connector.horizontal")
                         .font(.system(size: 10.5, weight: .semibold))
                         .foregroundStyle(Theme.textDim.swiftUI)
-                    Text("Entrée…")
+                    Text(L("Entrée…", "Input…"))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Theme.text.swiftUI)
                     Image(systemName: "chevron.down")
@@ -126,7 +126,7 @@ struct StageMasterBar: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .disabled(!hasTargets)
-            .help("Basculer l'entrée vidéo sur tous les projecteurs ciblés")
+            .help(L("Basculer l'entrée vidéo sur tous les projecteurs ciblés", "Switch video input on all targeted projectors"))
 
             Spacer(minLength: 8)
 
@@ -134,26 +134,26 @@ struct StageMasterBar: View {
             HStack(spacing: 8) {
                 stageStatPill(
                     count: model.fleet.projectingCount,
-                    label: "en projection",
+                    label: L("en projection", "projecting"),
                     tint: Theme.alive.swiftUI,
                     active: model.fleet.projectingCount > 0
                 )
                 stageStatPill(
                     count: model.fleet.shutterClosedCount,
-                    label: "volet fermé",
+                    label: L("volet fermé", "shutter closed"),
                     tint: Theme.accent.swiftUI,
                     active: model.fleet.shutterClosedCount > 0
                 )
                 stageStatPill(
                     count: model.fleet.standbyCount,
-                    label: "en veille",
+                    label: L("en veille", "standby"),
                     tint: Theme.standby.swiftUI,
                     active: model.fleet.standbyCount > 0
                 )
                 if model.fleet.alertCount > 0 {
                     stageStatPill(
                         count: model.fleet.alertCount,
-                        label: model.fleet.alertCount > 1 ? "alertes" : "alerte",
+                        label: model.fleet.alertCount > 1 ? L("alertes", "alerts") : L("alerte", "alert"),
                         tint: Theme.danger.swiftUI,
                         active: true
                     )

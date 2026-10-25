@@ -24,20 +24,20 @@ public enum PJLinkPowerState: String, Codable, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
-        case .standby: return "Veille"
-        case .on: return "Allumé"
-        case .cooling: return "Refroidissement"
-        case .warming: return "Préchauffage"
-        case .unknown: return "Inconnu"
+        case .standby: return L("Veille", "Standby")
+        case .on: return L("Allumé", "On")
+        case .cooling: return L("Refroidissement", "Cooling")
+        case .warming: return L("Préchauffage", "Warming up")
+        case .unknown: return L("Inconnu", "Unknown")
         }
     }
 
     public var shortLabel: String {
         switch self {
-        case .standby: return "VEILLE"
+        case .standby: return L("VEILLE", "STBY")
         case .on: return "ON"
-        case .cooling: return "REFROID."
-        case .warming: return "CHAUFFE"
+        case .cooling: return L("REFROID.", "COOL")
+        case .warming: return L("CHAUFFE", "WARM")
         case .unknown: return "—"
         }
     }
@@ -80,19 +80,19 @@ public enum PJLinkShutterState: String, Codable, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
-        case .open: return "Volet ouvert"
-        case .videoMuted: return "Volet vidéo fermé"
-        case .audioMuted: return "Audio coupé"
-        case .videoAndAudioMuted: return "Volet fermé (Noir)"
+        case .open: return L("Volet ouvert", "Shutter open")
+        case .videoMuted: return L("Volet vidéo fermé", "Video shutter closed")
+        case .audioMuted: return L("Audio coupé", "Audio muted")
+        case .videoAndAudioMuted: return L("Volet fermé (Noir)", "Shutter closed (Blackout)")
         }
     }
 
     public var badgeLabel: String {
         switch self {
-        case .open: return "OUVERT"
-        case .videoMuted: return "VOLET FERMÉ"
-        case .audioMuted: return "AUDIO MUET"
-        case .videoAndAudioMuted: return "VOLET FERMÉ"
+        case .open: return L("OUVERT", "OPEN")
+        case .videoMuted: return L("VOLET FERMÉ", "SHUTTER CLOSED")
+        case .audioMuted: return L("AUDIO MUET", "AUDIO MUTE")
+        case .videoAndAudioMuted: return L("VOLET FERMÉ", "SHUTTER CLOSED")
         }
     }
 }
@@ -120,11 +120,11 @@ public enum PJLinkInputCategory: String, Codable, CaseIterable, Sendable {
     public var label: String {
         switch self {
         case .rgb: return "RGB / VGA"
-        case .video: return "Vidéo"
-        case .digital: return "Numérique"
-        case .storage: return "Stockage"
-        case .network: return "Réseau / HDBaseT"
-        case .other: return "Entrée"
+        case .video: return L("Vidéo", "Video")
+        case .digital: return L("Numérique", "Digital")
+        case .storage: return L("Stockage", "Storage")
+        case .network: return L("Réseau / HDBaseT", "Network / HDBaseT")
+        case .other: return L("Entrée", "Input")
         }
     }
 
@@ -222,8 +222,8 @@ public enum PJLinkErrorLevel: Int, Codable, Comparable, CaseIterable, Sendable {
     public var label: String {
         switch self {
         case .ok: return "OK"
-        case .warning: return "Avertissement"
-        case .error: return "Erreur"
+        case .warning: return L("Avertissement", "Warning")
+        case .error: return L("Erreur", "Error")
         }
     }
 }
@@ -282,12 +282,12 @@ public struct PJLinkErrorStatus: Hashable, Codable, Sendable {
 
     public var components: [(name: String, symbol: String, level: PJLinkErrorLevel)] {
         [
-            ("Ventilateur", "fan", fan),
-            ("Lampe / Laser", "lightbulb", lamp),
-            ("Température", "thermometer.high", temperature),
-            ("Capot", "lock.open", coverOpen),
-            ("Filtre", "aqi.medium", filter),
-            ("Autre", "exclamationmark.circle", other),
+            (L("Ventilateur", "Fan"), "fan", fan),
+            (L("Lampe / Laser", "Lamp / Laser"), "lightbulb", lamp),
+            (L("Température", "Temperature"), "thermometer.high", temperature),
+            (L("Capot", "Cover"), "lock.open", coverOpen),
+            (L("Filtre", "Filter"), "aqi.medium", filter),
+            (L("Autre", "Other"), "exclamationmark.circle", other),
         ]
     }
 
@@ -297,7 +297,7 @@ public struct PJLinkErrorStatus: Hashable, Codable, Sendable {
 
     public var summaryLabel: String {
         let alerts = activeAlerts
-        if alerts.isEmpty { return "Aucune alerte" }
+        if alerts.isEmpty { return L("Aucune alerte", "No alerts") }
         return alerts.map { "\($0.name) (\($0.level.label.lowercased()))" }.joined(separator: ", ")
     }
 }
@@ -343,11 +343,11 @@ public enum PJLinkResponseError: String, Error, Codable, Equatable, Sendable, Lo
 
     public var label: String {
         switch self {
-        case .undefinedCommand: return "Commande non supportée (ERR1)"
-        case .outOfParameter: return "Paramètre hors plage (ERR2)"
-        case .unavailableTime: return "Projecteur occupé : veille, chauffe ou refroidissement (ERR3)"
-        case .projectorFailure: return "Défaillance matérielle du projecteur (ERR4)"
-        case .authenticationFailure: return "Mot de passe PJLink refusé (ERRA)"
+        case .undefinedCommand: return L("Commande non supportée (ERR1)", "Unsupported command (ERR1)")
+        case .outOfParameter: return L("Paramètre hors plage (ERR2)", "Parameter out of range (ERR2)")
+        case .unavailableTime: return L("Projecteur occupé : veille, chauffe ou refroidissement (ERR3)", "Projector busy: standby, warming, or cooling (ERR3)")
+        case .projectorFailure: return L("Défaillance matérielle du projecteur (ERR4)", "Projector hardware failure (ERR4)")
+        case .authenticationFailure: return L("Mot de passe PJLink refusé (ERRA)", "PJLink password rejected (ERRA)")
         }
     }
 

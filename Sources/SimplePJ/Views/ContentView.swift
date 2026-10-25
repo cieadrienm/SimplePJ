@@ -59,6 +59,8 @@ struct ContentView: View {
         }
         .background(Theme.background.swiftUI)
         .preferredColorScheme(.dark)
+        .environment(\.locale, model.language.locale)
+        .id(model.language.resolvedCode)
         .navigationTitle("SimplePJ")
         .navigationSubtitle(subtitle)
         .sheet(isPresented: $model.showAddProjector) { AddProjectorSheet(model: model) }
@@ -100,7 +102,10 @@ struct ContentView: View {
     private var subtitle: String {
         let count = model.fleet.projectors.count
         if count == 0 { return model.fleet.rangeInput }
-        return "\(Format.count(count, "projecteur")) · \(model.fleet.projectingCount) en projection"
+        return L(
+            "\(Format.count(count, "projecteur")) · \(model.fleet.projectingCount) en projection",
+            "\(count) projector\(count > 1 ? "s" : "") · \(model.fleet.projectingCount) projecting"
+        )
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {

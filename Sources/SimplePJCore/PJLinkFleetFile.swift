@@ -48,19 +48,19 @@ public enum FleetExportFormat: String, CaseIterable, Identifiable, Sendable {
 
     public var label: String {
         switch self {
-        case .txt: return "Fiche technique plateau (.txt)"
-        case .csv: return "Tableau CSV (.csv)"
-        case .json: return "Parc complet JSON (.json)"
-        case .ipPort: return "Liste d'adresses IP:port (.txt)"
+        case .txt: return L("Fiche technique plateau (.txt)", "Stage technical sheet (.txt)")
+        case .csv: return L("Tableau CSV (.csv)", "CSV spreadsheet (.csv)")
+        case .json: return L("Parc complet JSON (.json)", "Full JSON fleet (.json)")
+        case .ipPort: return L("Liste d'adresses IP:port (.txt)", "IP:port address list (.txt)")
         }
     }
 
     public var detail: String {
         switch self {
-        case .txt: return "Rapport lisible : noms de plateau, IP/MAC, modèles, numéros de série, entrées, heures lampe/filtre et alertes."
-        case .csv: return "Colonnes séparées par des virgules pour tableur ou régie."
-        case .json: return "Structure complète compatible avec l'ouverture dans SimplePJ."
-        case .ipPort: return "Une adresse IP (ou IP:port) par ligne."
+        case .txt: return L("Rapport lisible : noms de plateau, IP/MAC, modèles, numéros de série, entrées, heures lampe/filtre et alertes.", "Readable report: stage names, IP/MAC, models, serial numbers, inputs, lamp/filter hours, and alerts.")
+        case .csv: return L("Colonnes séparées par des virgules pour tableur ou régie.", "Comma-separated columns for spreadsheets or stage management.")
+        case .json: return L("Structure complète compatible avec l'ouverture dans SimplePJ.", "Full fleet structure compatible with reopening in SimplePJ.")
+        case .ipPort: return L("Une adresse IP (ou IP:port) par ligne.", "One IP (or IP:port) address per line.")
         }
     }
 

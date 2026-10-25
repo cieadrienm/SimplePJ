@@ -37,10 +37,10 @@ struct CardsGridView: View {
             Image(systemName: "line.3.horizontal.decrease.circle")
                 .font(.system(size: 28))
                 .foregroundStyle(Theme.textFaint.swiftUI)
-            Text("Aucun vidéoprojecteur ne correspond au filtre actif")
+            Text(L("Aucun vidéoprojecteur ne correspond au filtre actif", "No projector matches the active filter"))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Theme.textDim.swiftUI)
-            TextButton(title: "Réinitialiser les filtres", symbol: "arrow.counterclockwise", compact: true) {
+            TextButton(title: L("Réinitialiser les filtres", "Reset Filters"), symbol: "arrow.counterclockwise", compact: true) {
                 model.fleet.sidebarFilter = .all
                 model.fleet.searchQuery = ""
             }
@@ -105,7 +105,7 @@ struct ProjectorCard: View {
                     HStack(spacing: 6) {
                         Image(systemName: projector.isShutterClosed ? "eye.slash.fill" : "sun.max.fill")
                             .font(.system(size: 12, weight: .bold))
-                        Text(projector.isShutterClosed ? "VOLET FERMÉ · NOIR" : "VOLET OUVERT")
+                        Text(projector.isShutterClosed ? L("VOLET FERMÉ · NOIR", "SHUTTER CLOSED · BLACKOUT") : L("VOLET OUVERT", "SHUTTER OPEN"))
                             .font(.system(size: 11.5, weight: .bold))
                             .lineLimit(1)
                     }
@@ -134,7 +134,7 @@ struct ProjectorCard: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!online)
-                .help(projector.isShutterClosed ? "Ouvrir le volet (AVMT 30)" : "Fermer le volet / Noir (AVMT 31)")
+                .help(projector.isShutterClosed ? L("Ouvrir le volet (AVMT 30)", "Open shutter (AVMT 30)") : L("Fermer le volet / Noir (AVMT 31)", "Close shutter / Blackout (AVMT 31)"))
 
                 // Power toggle button
                 Button {
@@ -161,7 +161,7 @@ struct ProjectorCard: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!online && projector.connectionState != .authRequired)
-                .help(projector.power.isLit ? "Mettre en veille (POWR 0)" : "Allumer le vidéoprojecteur (POWR 1)")
+                .help(projector.power.isLit ? L("Mettre en veille (POWR 0)", "Standby (POWR 0)") : L("Allumer le vidéoprojecteur (POWR 1)", "Power on projector (POWR 1)"))
 
                 // Freeze button (Class 2)
                 if projector.pjlinkClass >= 2 {
@@ -180,7 +180,7 @@ struct ProjectorCard: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(!online)
-                    .help(projector.freeze ? "Dégeler l'image (%2FREZ 0)" : "Geler l'image (%2FREZ 1)")
+                    .help(projector.freeze ? L("Dégeler l'image (%2FREZ 0)", "Unfreeze image (%2FREZ 0)") : L("Geler l'image (%2FREZ 1)", "Freeze image (%2FREZ 1)"))
                 }
             }
 
@@ -192,16 +192,17 @@ struct ProjectorCard: View {
                         text: inp.displayName,
                         tint: isCurrent ? Theme.tcp.swiftUI : Theme.textDim.swiftUI,
                         active: isCurrent,
-                        help: "Basculer sur l'entrée \(inp.fullLabel) (%1INPT \(inp.code))"
+                        help: L("Basculer sur l'entrée \(inp.fullLabel) (%1INPT \(inp.code))", "Switch to input \(inp.fullLabel) (%1INPT \(inp.code))")
                     ) {
                         model.fleet.setInput(inp.code, on: [projector])
                     }
                 }
                 Spacer(minLength: 0)
                 if let res = projector.inputResolution, !res.isEmpty {
-                    Text(res)
+                    let displayRes = (res == "Aucun signal" || res == "No signal") ? L("Aucun signal", "No signal") : res
+                    Text(displayRes)
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(res == "Aucun signal" ? Theme.textFaint.swiftUI : Theme.textDim.swiftUI)
+                        .foregroundStyle((res == "Aucun signal" || res == "No signal") ? Theme.textFaint.swiftUI : Theme.textDim.swiftUI)
                 }
             }
 
@@ -237,7 +238,7 @@ struct ProjectorCard: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help("Afficher le détail des lampes, du filtre et des 6 capteurs ERST")
+                .help(L("Afficher le détail des lampes, du filtre et des 6 capteurs ERST", "Show lamp, filter, and 6-sensor ERST diagnostics"))
                 .popover(isPresented: $showTelemetryPopover, arrowEdge: .bottom) {
                     ProjectorTelemetryPopover(projector: projector)
                 }
@@ -248,7 +249,7 @@ struct ProjectorCard: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "key.fill").font(.system(size: 9.5))
-                            Text("Tester mots de passe")
+                            Text(L("Tester mots de passe", "Test Passwords"))
                                 .font(.system(size: 10, weight: .semibold))
                         }
                         .foregroundStyle(Theme.accent.swiftUI)
@@ -289,20 +290,20 @@ struct ProjectorCard: View {
         switch projector.connectionState {
         case .online:
             if projector.isProjectingLight {
-                Chip(text: "EN PROJECTION", tint: Theme.alive.swiftUI, filled: false)
+                Chip(text: L("EN PROJECTION", "PROJECTING"), tint: Theme.alive.swiftUI, filled: false)
             } else if projector.isShutterClosed {
-                Chip(text: "NOIR", tint: Theme.accent.swiftUI, filled: true)
+                Chip(text: L("NOIR", "BLACKOUT"), tint: Theme.accent.swiftUI, filled: true)
             } else {
                 Chip(text: projector.power.shortLabel, tint: Theme.powerColor(projector.power).swiftUI)
             }
         case .polling:
             Chip(text: "SYNC…", tint: Theme.accent.swiftUI)
         case .authRequired:
-            Chip(text: "MOT DE PASSE", tint: Theme.danger.swiftUI, filled: true)
+            Chip(text: L("MOT DE PASSE", "PASSWORD"), tint: Theme.danger.swiftUI, filled: true)
         case .offline:
-            Chip(text: "HORS LIGNE", tint: Theme.textFaint.swiftUI)
+            Chip(text: L("HORS LIGNE", "OFFLINE"), tint: Theme.textFaint.swiftUI)
         case .unknown:
-            Chip(text: "EN ATTENTE", tint: Theme.textFaint.swiftUI)
+            Chip(text: L("EN ATTENTE", "PENDING"), tint: Theme.textFaint.swiftUI)
         }
     }
 
@@ -321,19 +322,19 @@ struct ProjectorCard: View {
 
     @ViewBuilder
     private func projectorContextMenu(for pj: Projector) -> some View {
-        Button(pj.isShutterClosed ? "Ouvrir le volet (AVMT 30)" : "Fermer le volet / Noir (AVMT 31)") {
+        Button(pj.isShutterClosed ? L("Ouvrir le volet (AVMT 30)", "Open Shutter (AVMT 30)") : L("Fermer le volet / Noir (AVMT 31)", "Close Shutter / Blackout (AVMT 31)")) {
             model.fleet.setShutter(closed: !pj.isShutterClosed, on: [pj])
         }
-        Button(pj.power.isLit ? "Mettre en veille (POWR 0)…" : "Allumer (POWR 1)") {
+        Button(pj.power.isLit ? L("Mettre en veille (POWR 0)…", "Standby (POWR 0)…") : L("Allumer (POWR 1)", "Power On (POWR 1)")) {
             model.requestPower(on: !pj.power.isLit, targets: [pj])
         }
         if pj.pjlinkClass >= 2 {
-            Button(pj.freeze ? "Dégeler l'image (FREZ 0)" : "Geler l'image (FREZ 1)") {
+            Button(pj.freeze ? L("Dégeler l'image (FREZ 0)", "Unfreeze Image (FREZ 0)") : L("Geler l'image (FREZ 1)", "Freeze Image (FREZ 1)")) {
                 model.fleet.setFreeze(!pj.freeze, on: [pj])
             }
         }
         Divider()
-        Menu("Entrée vidéo") {
+        Menu(L("Entrée vidéo", "Video Input")) {
             ForEach(pj.availableInputs) { inp in
                 Button((pj.currentInput == inp.code ? "✓ " : "") + inp.fullLabel) {
                     model.fleet.setInput(inp.code, on: [pj])
@@ -341,20 +342,20 @@ struct ProjectorCard: View {
             }
         }
         Divider()
-        Button("Nommer / #grouper dans l'inspecteur…") {
+        Button(L("Nommer / #grouper dans l'inspecteur…", "Rename / #tag in Inspector…")) {
             model.fleet.selection = [pj.id]
             model.revealInspector()
             model.labelFocusRequest += 1
         }
-        Button("Actualiser l'état PJLink") {
+        Button(L("Actualiser l'état PJLink", "Refresh PJLink Status")) {
             model.fleet.refresh([pj], includeIdentity: true)
         }
         if pj.connectionState == .authRequired {
-            Button("Tester les mots de passe d'usine…") {
+            Button(L("Tester les mots de passe d'usine…", "Test Factory Passwords…")) {
                 model.fleet.autoUnlockPassword(for: pj)
             }
         }
-        Button("Ouvrir l'interface Web (http://\(pj.ip))") {
+        Button(L("Ouvrir l'interface Web (http://\(pj.ip))", "Open Web Interface (http://\(pj.ip))")) {
             model.openWebInterface(pj)
         }
         if pj.mac != nil {
@@ -362,12 +363,12 @@ struct ProjectorCard: View {
                 model.wakeProjectors([pj])
             }
         }
-        Button("Copier l'adresse IP") {
+        Button(L("Copier l'adresse IP", "Copy IP Address")) {
             AppModel.copyToPasteboard(pj.endpointLabel)
-            model.flash("Adresse copiée")
+            model.flash(L("Adresse copiée", "Address copied"))
         }
         Divider()
-        Button("Retirer du parc", role: .destructive) {
+        Button(L("Retirer du parc", "Remove from Fleet"), role: .destructive) {
             model.fleet.removeProjectors(ids: [pj.id])
         }
     }
@@ -398,15 +399,15 @@ struct ProjectorTableView: View {
 
     private var headerRow: some View {
         HStack(spacing: 6) {
-            sortHeader("État", col: .status, width: 52)
-            sortHeader("Projecteur", col: .name, width: nil)
-            sortHeader("Adresse IP", col: .ip, width: 72)
-            sortHeader("Modèle", col: .model, width: 92)
-            sortHeader("Alim.", col: .power, width: 68)
-            sortHeader("Volet / Mute", col: .shutter, width: 112)
-            sortHeader("Entrée", col: .input, width: 102)
-            sortHeader("Lampe", col: .lamp, width: 62)
-            sortHeader("Latence", col: .latency, width: 54, alignment: .trailing)
+            sortHeader(L("État", "State"), col: .status, width: 52)
+            sortHeader(L("Projecteur", "Projector"), col: .name, width: nil)
+            sortHeader(L("Adresse IP", "IP Address"), col: .ip, width: 72)
+            sortHeader(L("Modèle", "Model"), col: .model, width: 92)
+            sortHeader(L("Alim.", "Power"), col: .power, width: 68)
+            sortHeader(L("Volet / Mute", "Shutter / Mute"), col: .shutter, width: 112)
+            sortHeader(L("Entrée", "Input"), col: .input, width: 102)
+            sortHeader(L("Lampe", "Lamp"), col: .lamp, width: 62)
+            sortHeader(L("Latence", "Latency"), col: .latency, width: 54, alignment: .trailing)
         }
         .padding(.horizontal, 12)
         .frame(height: 28)
@@ -454,7 +455,7 @@ struct ProjectorTableView: View {
                 Circle()
                     .fill(Theme.statusColor(pj).swiftUI)
                     .frame(width: 7, height: 7)
-                Text(online ? (pj.isProjectingLight ? "Actif" : (pj.isShutterClosed ? "Noir" : pj.power.label)) : pj.connectionState.label)
+                Text(online ? (pj.isProjectingLight ? L("Actif", "Live") : (pj.isShutterClosed ? L("Noir", "Black") : pj.power.label)) : pj.connectionState.label)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(online ? Theme.text.swiftUI : Theme.textDim.swiftUI)
                     .lineLimit(1)
@@ -518,7 +519,7 @@ struct ProjectorTableView: View {
             HStack(spacing: 3) {
                 HStack(spacing: 0) {
                     inlineSegmentButton(
-                        title: "OUV",
+                        title: L("OUV", "OPEN"),
                         active: online && !pj.isShutterClosed,
                         tint: Theme.alive.swiftUI,
                         disabled: !online
@@ -527,7 +528,7 @@ struct ProjectorTableView: View {
                     }
                     Rectangle().fill(Color.white.opacity(0.08)).frame(width: 1, height: 18)
                     inlineSegmentButton(
-                        title: "NOIR",
+                        title: L("NOIR", "BLK"),
                         active: online && pj.isShutterClosed,
                         tint: Theme.accent.swiftUI,
                         filledWhenActive: true,
@@ -556,7 +557,7 @@ struct ProjectorTableView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!online)
-                .help(pj.shutter.isAudioMuted ? "Rétablir le son (AVMT 20)" : "Couper le son (AVMT 21)")
+                .help(pj.shutter.isAudioMuted ? L("Rétablir le son (AVMT 20)", "Unmute audio (AVMT 20)") : L("Couper le son (AVMT 21)", "Mute audio (AVMT 21)"))
             }
             .frame(width: 112, alignment: .leading)
 
@@ -597,7 +598,7 @@ struct ProjectorTableView: View {
             .menuIndicator(.hidden)
             .disabled(!online)
             .frame(width: 102, alignment: .leading)
-            .help("Changer l'entrée vidéo (%1INPT)")
+            .help(L("Changer l'entrée vidéo (%1INPT)", "Switch video input (%1INPT)"))
 
             // Clickable Lamp & ERST Health Popover
             Button {
@@ -618,7 +619,7 @@ struct ProjectorTableView: View {
             }
             .buttonStyle(.plain)
             .frame(width: 62, alignment: .leading)
-            .help("Détail des lampes, du filtre et des 6 capteurs ERST")
+            .help(L("Détail des lampes, du filtre et des 6 capteurs ERST", "Lamp, filter, and 6-sensor ERST diagnostics"))
             .popover(
                 isPresented: Binding(
                     get: { popoverProjectorID == pj.id },
@@ -701,12 +702,12 @@ struct ProjectorTelemetryPopover: View {
 
             Divider()
 
-            Text("LAMPES / SOURCES LASER (%1LAMP)")
+            Text(L("LAMPES / SOURCES LASER (%1LAMP)", "LAMPS / LASER SOURCES (%1LAMP)"))
                 .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                 .foregroundStyle(Theme.textDim.swiftUI)
 
             if projector.lamps.isEmpty {
-                Text("Aucune donnée lampe reçue")
+                Text(L("Aucune donnée lampe reçue", "No lamp data received"))
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.textFaint.swiftUI)
             } else {
@@ -715,11 +716,11 @@ struct ProjectorTelemetryPopover: View {
                         Circle()
                             .fill(lamp.isOn ? Theme.alive.swiftUI : Theme.standby.swiftUI)
                             .frame(width: 7, height: 7)
-                        Text("Lampe \(idx + 1)")
+                        Text(L("Lampe \(idx + 1)", "Lamp \(idx + 1)"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(Theme.text.swiftUI)
                         Spacer()
-                        Text(verbatim: "\(lamp.hours) h · \(lamp.isOn ? "Allumée" : "Éteinte")")
+                        Text(verbatim: "\(lamp.hours) h · \(lamp.isOn ? L("Allumée", "On") : L("Éteinte", "Off"))")
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(Theme.textDim.swiftUI)
                     }
@@ -731,7 +732,7 @@ struct ProjectorTelemetryPopover: View {
                     Image(systemName: "aqi.medium")
                         .font(.system(size: 10))
                         .foregroundStyle(Theme.textDim.swiftUI)
-                    Text("Filtre optique (%2FILT)")
+                    Text(L("Filtre optique (%2FILT)", "Optical filter (%2FILT)"))
                         .font(.system(size: 11))
                         .foregroundStyle(Theme.text.swiftUI)
                     Spacer()
@@ -743,7 +744,7 @@ struct ProjectorTelemetryPopover: View {
 
             Divider()
 
-            Text("DIAGNOSTIC 6 CAPTEURS (%1ERST : \(projector.errors.rawCode))")
+            Text(L("DIAGNOSTIC 6 CAPTEURS (%1ERST : \(projector.errors.rawCode))", "6-SENSOR DIAGNOSTICS (%1ERST: \(projector.errors.rawCode))"))
                 .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                 .foregroundStyle(Theme.textDim.swiftUI)
 
@@ -784,11 +785,11 @@ struct WelcomeView: View {
             ProjectorHeroGraphic(active: model.fleet.isScanning, size: 118)
 
             VStack(spacing: 6) {
-                Text(model.fleet.isScanning ? "Recherche des vidéoprojecteurs PJLink…" : "Contrôle PJLink de plateau")
+                Text(model.fleet.isScanning ? L("Recherche des vidéoprojecteurs PJLink…", "Scanning for PJLink Projectors…") : L("Contrôle PJLink de plateau", "Stage PJLink Control"))
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Theme.text.swiftUI)
 
-                Text("Découvrez automatiquement tous les vidéoprojecteurs PJLink (Classe 1 & 2, port 4352) sur votre sous-réseau,\nou lancez un plateau simulé de 4 projecteurs pour préparer vos conduites et commandes OSC.")
+                Text(L("Découvrez automatiquement tous les vidéoprojecteurs PJLink (Classe 1 & 2, port 4352) sur votre sous-réseau,\nou lancez un plateau simulé de 4 projecteurs pour préparer vos conduites et commandes OSC.", "Automatically discover all PJLink projectors (Class 1 & 2, port 4352) on your subnet,\nor launch a 4-projector simulated stage rig to prepare your cues and OSC commands."))
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textDim.swiftUI)
                     .multilineTextAlignment(.center)
@@ -797,7 +798,7 @@ struct WelcomeView: View {
 
             HStack(spacing: 10) {
                 TextButton(
-                    title: "Découvrir \(model.fleet.rangeInput)",
+                    title: L("Découvrir \(model.fleet.rangeInput)", "Discover \(model.fleet.rangeInput)"),
                     symbol: "dot.radiowaves.left.and.right",
                     prominent: true,
                     disabled: !model.fleet.canStartScan
@@ -806,14 +807,14 @@ struct WelcomeView: View {
                 }
 
                 TextButton(
-                    title: "Ajouter une IP…",
+                    title: L("Ajouter une IP…", "Add IP…"),
                     symbol: "plus"
                 ) {
                     model.showAddProjector = true
                 }
 
                 TextButton(
-                    title: "Simuler un plateau (4 VP)",
+                    title: L("Simuler un plateau (4 VP)", "Simulate Stage Rig (4 PJ)"),
                     symbol: "play.tv",
                     tint: Theme.alive.swiftUI
                 ) {
@@ -822,7 +823,7 @@ struct WelcomeView: View {
 
                 if pmCount > 0 {
                     TextButton(
-                        title: "Importer ProjectorManager (\(pmCount) VP)",
+                        title: L("Importer ProjectorManager (\(pmCount) VP)", "Import ProjectorManager (\(pmCount) PJ)"),
                         symbol: "square.and.arrow.down",
                         tint: Theme.osc.swiftUI
                     ) {

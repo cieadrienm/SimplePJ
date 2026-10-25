@@ -10,7 +10,7 @@ struct TopBar: View {
         HStack(spacing: 9) {
             IconButton(
                 symbol: "sidebar.left",
-                helpText: "Afficher ou masquer la barre latérale (⌥⌘S)",
+                helpText: L("Afficher ou masquer la barre latérale (⌥⌘S)", "Show or hide sidebar (⌥⌘S)"),
                 active: model.showSidebar
             ) {
                 model.showSidebar.toggle()
@@ -22,7 +22,7 @@ struct TopBar: View {
             rangeField
             IconButton(
                 symbol: model.fleet.isCurrentRangeSaved ? "star.fill" : "star",
-                helpText: model.fleet.isCurrentRangeSaved ? "Retirer cette plage des favoris" : "Garder cette plage en favori",
+                helpText: model.fleet.isCurrentRangeSaved ? L("Retirer cette plage des favoris", "Remove this range from favorites") : L("Garder cette plage en favori", "Save this range as a favorite"),
                 tint: Theme.accent.swiftUI,
                 disabled: model.fleet.rangeInput.isEmpty
             ) {
@@ -33,14 +33,14 @@ struct TopBar: View {
 
             IconButton(
                 symbol: "plus",
-                helpText: "Ajouter un vidéoprojecteur par adresse IP (⌘N)"
+                helpText: L("Ajouter un vidéoprojecteur par adresse IP (⌘N)", "Add projector by IP address (⌘N)")
             ) {
                 model.showAddProjector = true
             }
 
             IconButton(
                 symbol: "arrow.clockwise",
-                helpText: "Actualiser l'état PJLink de tous les projecteurs (⌘R)",
+                helpText: L("Actualiser l'état PJLink de tous les projecteurs (⌘R)", "Refresh PJLink status of all projectors (⌘R)"),
                 disabled: model.fleet.projectors.isEmpty || model.fleet.isScanning
             ) {
                 model.fleet.refreshAll(includeIdentity: true)
@@ -57,7 +57,7 @@ struct TopBar: View {
 
             IconButton(
                 symbol: "terminal",
-                helpText: "Afficher ou masquer la console protocole PJLink (⌥⌘L)",
+                helpText: L("Afficher ou masquer la console protocole PJLink (⌥⌘L)", "Show or hide PJLink protocol console (⌥⌘L)"),
                 active: model.showConsoleDrawer
             ) {
                 model.showConsoleDrawer.toggle()
@@ -65,7 +65,7 @@ struct TopBar: View {
 
             IconButton(
                 symbol: "sidebar.right",
-                helpText: "Afficher ou masquer l'inspecteur du projecteur (⌥⌘I)",
+                helpText: L("Afficher ou masquer l'inspecteur du projecteur (⌥⌘I)", "Show or hide projector inspector (⌥⌘I)"),
                 active: model.showInspector
             ) {
                 model.toggleInspector()
@@ -88,7 +88,7 @@ struct TopBar: View {
                 }
             }
             if NetworkInterface.scannableInterfaces().isEmpty {
-                Text("Aucune interface réseau active")
+                Text(L("Aucune interface réseau active", "No active network interface"))
             }
             if !model.fleet.savedRanges.isEmpty {
                 Divider()
@@ -105,7 +105,7 @@ struct TopBar: View {
                 Image(systemName: "network")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.accent.swiftUI)
-                Text(model.currentInterface?.name ?? "Réseau")
+                Text(model.currentInterface?.name ?? L("Réseau", "Network"))
                     .font(.system(size: 11.5, weight: .medium))
                     .foregroundStyle(Theme.text.swiftUI)
                 Image(systemName: "chevron.down")
@@ -120,7 +120,7 @@ struct TopBar: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .disabled(model.fleet.isScanning)
-        .help("Choisir une interface réseau ou une plage favorite")
+        .help(L("Choisir une interface réseau ou une plage favorite", "Choose a network interface or favorite range"))
     }
 
     private var rangeField: some View {
@@ -135,19 +135,19 @@ struct TopBar: View {
         )
         .frame(width: 196)
         .disabled(model.fleet.isScanning)
-        .help("Sous-réseau CIDR, plage IP ou liste d'adresses (:4352). Entrée lance la découverte PJLink.")
+        .help(L("Sous-réseau CIDR, plage IP ou liste d'adresses (:4352). Entrée lance la découverte PJLink.", "CIDR subnet, IP range, or address list (:4352). Press Return to start PJLink discovery."))
     }
 
     private var discoverButton: some View {
         Group {
             if model.fleet.isScanning {
-                TextButton(title: "Arrêter", symbol: "stop.fill", destructive: true) {
+                TextButton(title: L("Arrêter", "Stop"), symbol: "stop.fill", destructive: true) {
                     model.fleet.stopDiscovery()
                 }
                 .keyboardShortcut(".", modifiers: [.command])
             } else {
                 TextButton(
-                    title: "Découvrir",
+                    title: L("Découvrir", "Discover"),
                     symbol: "dot.radiowaves.left.and.right",
                     prominent: true,
                     disabled: !model.fleet.canStartScan
@@ -156,7 +156,7 @@ struct TopBar: View {
                 }
             }
         }
-        .help(model.fleet.isScanning ? "Arrêter la découverte (⌘.)" : "Rechercher les vidéoprojecteurs PJLink sur le réseau (⇧⌘D)")
+        .help(model.fleet.isScanning ? L("Arrêter la découverte (⌘.)", "Stop discovery (⌘.)") : L("Rechercher les vidéoprojecteurs PJLink sur le réseau (⇧⌘D)", "Discover PJLink projectors on the network (⇧⌘D)"))
     }
 
     private var viewModePicker: some View {
@@ -179,7 +179,7 @@ struct TopBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help("Affichage \(mode.label)")
+                .help(L("Affichage \(mode.label)", "\(mode.label) view"))
             }
         }
         .padding(2)
@@ -189,21 +189,21 @@ struct TopBar: View {
     private var toolsMenu: some View {
         @Bindable var fleet = model.fleet
         return Menu {
-            Button(fleet.isDemoRigActive ? "Arrêter le plateau simulé (4 VP)" : "Lancer un plateau simulé (4 VP)") {
+            Button(fleet.isDemoRigActive ? L("Arrêter le plateau simulé (4 VP)", "Stop Simulated Stage Rig (4 PJ)") : L("Lancer un plateau simulé (4 VP)", "Start Simulated Stage Rig (4 PJ)")) {
                 fleet.toggleSimulatedStageRig()
             }
             Divider()
-            Button("Ouvrir un parc (.simplepj)…") { model.openFleetPanel() }
-            Button("Enregistrer le parc (.simplepj)…") { model.saveFleetPanel() }
+            Button(L("Ouvrir un parc (.simplepj)…", "Open Fleet (.simplepj)…")) { model.openFleetPanel() }
+            Button(L("Enregistrer le parc (.simplepj)…", "Save Fleet (.simplepj)…")) { model.saveFleetPanel() }
                 .disabled(fleet.projectors.isEmpty)
-            Button("Exporter la fiche technique…") { model.showExport = true }
+            Button(L("Exporter la fiche technique…", "Export Technical Sheet…")) { model.showExport = true }
                 .disabled(fleet.projectors.isEmpty)
             Divider()
-            Button("Wake-on-LAN sur la sélection") { model.wakeProjectors() }
+            Button(L("Wake-on-LAN sur la sélection", "Wake-on-LAN Selected")) { model.wakeProjectors() }
                 .disabled(!fleet.activeTargets.contains { $0.mac != nil })
-            Button("Commandes OSC & API HTTP…") { model.showOSCGuide = true }
+            Button(L("Commandes OSC & API HTTP…", "OSC Commands & HTTP API…")) { model.showOSCGuide = true }
             Divider()
-            Picker("Surveillance auto", selection: $fleet.pollInterval) {
+            Picker(L("Surveillance auto", "Auto Polling"), selection: $fleet.pollInterval) {
                 ForEach(PollInterval.allCases) { interval in
                     Text(interval.label).tag(interval)
                 }
@@ -218,7 +218,7 @@ struct TopBar: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Outils : simulateur plateau, fichiers .simplepj, export, Wake-on-LAN, OSC et cadence de surveillance")
+        .help(L("Outils : simulateur plateau, fichiers .simplepj, export, Wake-on-LAN, OSC et cadence de surveillance", "Tools: stage simulator, .simplepj files, export, Wake-on-LAN, OSC, and polling cadence"))
     }
 
     private var searchField: some View {
@@ -227,7 +227,7 @@ struct TopBar: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(searchFocused ? Theme.accent.swiftUI : Theme.textDim.swiftUI)
-            TextField("Filtrer (nom, IP, #tag, modèle)", text: $fleet.searchQuery)
+            TextField(L("Filtrer (nom, IP, #tag, modèle)", "Filter (name, IP, #tag, model)"), text: $fleet.searchQuery)
                 .textFieldStyle(.plain)
                 .font(.system(size: 11.5))
                 .foregroundStyle(Theme.text.swiftUI)
@@ -253,6 +253,6 @@ struct TopBar: View {
                         .strokeBorder(searchFocused ? Theme.accent.swiftUI.opacity(0.6) : Color.white.opacity(0.08), lineWidth: 1)
                 )
         )
-        .help("Filtrer le parc par nom de plateau, #groupe, IP, modèle ou numéro de série (⌘F)")
+        .help(L("Filtrer le parc par nom de plateau, #groupe, IP, modèle ou numéro de série (⌘F)", "Filter fleet by stage name, #group, IP, model, or serial number (⌘F)"))
     }
 }

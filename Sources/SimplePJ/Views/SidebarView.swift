@@ -27,39 +27,39 @@ struct SidebarView: View {
     private var fleetFiltersSection: some View {
         let fleet = model.fleet
         return VStack(alignment: .leading, spacing: 4) {
-            SectionHeader("Parc & États")
+            SectionHeader(L("Parc & États", "Fleet & States"))
             filterRow(
                 filter: .all,
                 symbol: "videoprojector",
-                title: "Tous les projecteurs",
+                title: L("Tous les projecteurs", "All Projectors"),
                 count: fleet.projectors.count,
                 tint: Theme.accent.swiftUI
             )
             filterRow(
                 filter: .projecting,
                 symbol: "sun.max.fill",
-                title: "En projection",
+                title: L("En projection", "Projecting"),
                 count: fleet.projectingCount,
                 tint: Theme.alive.swiftUI
             )
             filterRow(
                 filter: .shutterClosed,
                 symbol: "eye.slash.fill",
-                title: "Volet fermé (Noir)",
+                title: L("Volet fermé (Noir)", "Shutter Closed (Blackout)"),
                 count: fleet.shutterClosedCount,
                 tint: Theme.accent.swiftUI
             )
             filterRow(
                 filter: .standby,
                 symbol: "moon.zzz.fill",
-                title: "En veille / Chauffe",
+                title: L("En veille / Chauffe", "Standby / Warm-up"),
                 count: fleet.standbyCount,
                 tint: Theme.standby.swiftUI
             )
             filterRow(
                 filter: .alerts,
                 symbol: "exclamationmark.triangle.fill",
-                title: "Alertes & Mots de passe",
+                title: L("Alertes & Mots de passe", "Alerts & Passwords"),
                 count: fleet.alertCount,
                 tint: Theme.danger.swiftUI
             )
@@ -69,7 +69,7 @@ struct SidebarView: View {
     private var stageGroupsSection: some View {
         let tags = model.fleet.allTags
         return VStack(alignment: .leading, spacing: 5) {
-            SectionHeader("Groupes de plateau") {
+            SectionHeader(L("Groupes de plateau", "Stage Groups")) {
                 if case .tag = model.fleet.sidebarFilter {
                     Button {
                         model.fleet.sidebarFilter = .all
@@ -79,11 +79,11 @@ struct SidebarView: View {
                             .foregroundStyle(Theme.textDim.swiftUI)
                     }
                     .buttonStyle(.plain)
-                    .help("Afficher tous les groupes")
+                    .help(L("Afficher tous les groupes", "Show all groups"))
                 }
             }
             if tags.isEmpty {
-                Text("Ajoutez des #tags au nom d'un projecteur (ex. #face, #cyclo, #sol) pour créer des groupes de plateau.")
+                Text(L("Ajoutez des #tags au nom d'un projecteur (ex. #face, #cyclo, #sol) pour créer des groupes de plateau.", "Add #tags to a projector's name (e.g. #front, #cyclo, #floor) to create stage groups."))
                     .font(.system(size: 10.5))
                     .foregroundStyle(Theme.textFaint.swiftUI)
                     .fixedSize(horizontal: false, vertical: true)
@@ -99,24 +99,24 @@ struct SidebarView: View {
                         monospaced: true
                     )
                     .contextMenu {
-                        Button("Fermer les volets de \(entry.tag) (Noir)") {
+                        Button(L("Fermer les volets de \(entry.tag) (Noir)", "Close \(entry.tag) Shutters (Blackout)")) {
                             model.fleet.setShutter(closed: true, on: groupProjectors)
                         }
-                        Button("Ouvrir les volets de \(entry.tag)") {
+                        Button(L("Ouvrir les volets de \(entry.tag)", "Open \(entry.tag) Shutters")) {
                             model.fleet.setShutter(closed: false, on: groupProjectors)
                         }
                         Divider()
-                        Button("Allumer le groupe \(entry.tag)") {
+                        Button(L("Allumer le groupe \(entry.tag)", "Power On Group \(entry.tag)")) {
                             model.requestPower(on: true, targets: groupProjectors)
                         }
-                        Button("Mettre le groupe \(entry.tag) en veille…") {
+                        Button(L("Mettre le groupe \(entry.tag) en veille…", "Standby Group \(entry.tag)…")) {
                             model.requestPower(on: false, targets: groupProjectors)
                         }
                         Divider()
-                        Button("Copier l'adresse OSC du groupe") {
+                        Button(L("Copier l'adresse OSC du groupe", "Copy Group OSC Address")) {
                             let clean = entry.tag.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
                             AppModel.copyToPasteboard("/simplepj/group/\(clean)/shutter")
-                            model.flash("Adresse OSC copiée")
+                            model.flash(L("Adresse OSC copiée", "OSC address copied"))
                         }
                     }
                 }
@@ -126,10 +126,10 @@ struct SidebarView: View {
 
     private var networksSection: some View {
         VStack(alignment: .leading, spacing: 5) {
-            SectionHeader("Réseaux de ce Mac")
+            SectionHeader(L("Réseaux de ce Mac", "This Mac's Networks"))
             let interfaces = NetworkInterface.scannableInterfaces()
             if interfaces.isEmpty {
-                Text("Aucune interface active")
+                Text(L("Aucune interface active", "No active interface"))
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.textFaint.swiftUI)
             }
@@ -167,7 +167,7 @@ struct SidebarView: View {
 
     private var favouritesSection: some View {
         VStack(alignment: .leading, spacing: 5) {
-            SectionHeader("Plages favorites")
+            SectionHeader(L("Plages favorites", "Favorite Ranges"))
             ForEach(model.fleet.savedRanges) { saved in
                 let active = model.fleet.rangeInput == saved.range
                 Button {
@@ -191,13 +191,13 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
-                    Button("Renommer…") { model.renamingRange = saved }
-                    Button("Découvrir maintenant") {
+                    Button(L("Renommer…", "Rename…")) { model.renamingRange = saved }
+                    Button(L("Découvrir maintenant", "Discover Now")) {
                         model.fleet.rangeInput = saved.range
                         model.fleet.startDiscovery()
                     }
                     Divider()
-                    Button("Retirer des favoris", role: .destructive) {
+                    Button(L("Retirer des favoris", "Remove from Favorites"), role: .destructive) {
                         model.fleet.removeSavedRange(saved.range)
                     }
                 }
@@ -209,7 +209,7 @@ struct SidebarView: View {
         let oscPort = model.fleet.oscServer?.port ?? kSimplePJDefaultOSCInPort
         let oscActive = model.fleet.oscServer?.isRunning == true
         return VStack(alignment: .leading, spacing: 8) {
-            SectionHeader("Régie & Simulation")
+            SectionHeader(L("Régie & Simulation", "Show Control & Simulator"))
             Button {
                 model.showOSCGuide = true
             } label: {
@@ -236,7 +236,7 @@ struct SidebarView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help("Afficher les adresses OSC et HTTP pour OSCScore, Montage, eMotion ou QLab")
+            .help(L("Afficher les adresses OSC et HTTP pour OSCScore, Montage, eMotion ou QLab", "View OSC and HTTP addresses for OSCScore, Montage, eMotion, or QLab"))
 
             Button {
                 model.fleet.toggleSimulatedStageRig()
@@ -245,7 +245,7 @@ struct SidebarView: View {
                     Image(systemName: model.fleet.isDemoRigActive ? "stop.circle.fill" : "play.tv")
                         .font(.system(size: 11.5, weight: .semibold))
                         .foregroundStyle(model.fleet.isDemoRigActive ? Theme.alive.swiftUI : Theme.accent.swiftUI)
-                    Text(model.fleet.isDemoRigActive ? "Plateau simulé actif (4 VP)" : "Simuler un plateau (4 VP)")
+                    Text(model.fleet.isDemoRigActive ? L("Plateau simulé actif (4 VP)", "Simulated Rig Active (4 PJ)") : L("Simuler un plateau (4 VP)", "Simulate Stage Rig (4 PJ)"))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Theme.text.swiftUI)
                     Spacer()
@@ -259,7 +259,7 @@ struct SidebarView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help("Démarre ou arrête 4 serveurs TCP PJLink Classe 2 réels sur 127.0.0.1 pour préparer une conduite hors plateau")
+            .help(L("Démarre ou arrête 4 serveurs TCP PJLink Classe 2 réels sur 127.0.0.1 pour préparer une conduite hors plateau", "Starts or stops 4 real PJLink Class 2 TCP servers on 127.0.0.1 for offline show preparation"))
 
             if model.fleet.projectorManagerEntryCount > 0 {
                 Button {
@@ -269,7 +269,7 @@ struct SidebarView: View {
                         Image(systemName: "square.and.arrow.down")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Theme.osc.swiftUI)
-                        Text("Importer ProjectorManager (\(model.fleet.projectorManagerEntryCount))")
+                        Text(L("Importer ProjectorManager (\(model.fleet.projectorManagerEntryCount))", "Import ProjectorManager (\(model.fleet.projectorManagerEntryCount))"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(Theme.text.swiftUI)
                             .lineLimit(1)
@@ -281,7 +281,7 @@ struct SidebarView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help("Importer la liste des vidéoprojecteurs enregistrés dans ProjectorManager (⇧⌘I)")
+                .help(L("Importer la liste des vidéoprojecteurs enregistrés dans ProjectorManager (⇧⌘I)", "Import projectors saved in ProjectorManager (⇧⌘I)"))
             }
         }
     }

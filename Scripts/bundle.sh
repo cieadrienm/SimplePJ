@@ -21,6 +21,9 @@ cp "$BIN/SimplePJ" "$APP/Contents/MacOS/SimplePJ"
 cp "$BIN/simplepj-mcp" "$APP/Contents/MacOS/simplepj-mcp"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp Resources/SimplePJ.sdef "$APP/Contents/Resources/SimplePJ.sdef"
+for LPROJ in Resources/*.lproj; do
+    [ -d "$LPROJ" ] && cp -R "$LPROJ" "$APP/Contents/Resources/"
+done
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

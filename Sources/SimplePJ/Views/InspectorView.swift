@@ -65,9 +65,9 @@ struct InspectorView: View {
                         .font(.system(size: 11.5, design: .monospaced))
                         .foregroundStyle(Theme.textDim.swiftUI)
                         .textSelection(.enabled)
-                    Chip(text: "CLASSE \(pj.pjlinkClass)", tint: pj.pjlinkClass >= 2 ? Theme.tcp.swiftUI : Theme.textDim.swiftUI)
+                    Chip(text: L("CLASSE \(pj.pjlinkClass)", "CLASS \(pj.pjlinkClass)"), tint: pj.pjlinkClass >= 2 ? Theme.tcp.swiftUI : Theme.textDim.swiftUI)
                     if pj.isSimulated {
-                        Chip(text: "SIMULÉ", tint: Theme.osc.swiftUI)
+                        Chip(text: L("SIMULÉ", "SIMULATED"), tint: Theme.osc.swiftUI)
                     }
                 }
                 HStack(spacing: 6) {
@@ -88,22 +88,22 @@ struct InspectorView: View {
 
     private func identityEditSection(_ pj: Projector) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            SectionHeader("Plateau & Accès")
-            FieldRow("Nom & #tags", width: 84) {
+            SectionHeader(L("Plateau & Accès", "Stage & Access"))
+            FieldRow(L("Nom & #tags", "Name & #tags"), width: 84) {
                 CommitField(
                     value: pj.label ?? "",
-                    placeholder: "Face Cour #face #cour",
+                    placeholder: L("Face Cour #face #cour", "Stage Left #front #left"),
                     onCommit: { text in
                         model.fleet.updateProjector(pj.id) { $0.label = text.isEmpty ? nil : text }
                     }
                 )
                 .focused($labelFocused)
             }
-            FieldRow("Mot de passe", width: 84) {
+            FieldRow(L("Mot de passe", "Password"), width: 84) {
                 HStack(spacing: 5) {
                     CommitField(
                         value: pj.password,
-                        placeholder: pj.requiresAuth ? "Requis (PJLINK 1)" : "Aucun (PJLINK 0)",
+                        placeholder: pj.requiresAuth ? L("Requis (PJLINK 1)", "Required (PJLINK 1)") : L("Aucun (PJLINK 0)", "None (PJLINK 0)"),
                         monospaced: true,
                         onCommit: { pwd in
                             model.fleet.updateProjector(pj.id) { $0.password = pwd }
@@ -115,7 +115,7 @@ struct InspectorView: View {
                     if pj.connectionState == .authRequired || pj.requiresAuth {
                         IconButton(
                             symbol: "key.fill",
-                            helpText: "Tester automatiquement les mots de passe PJLink d'usine (panasonic, admin, JBMIA, 0000…)",
+                            helpText: L("Tester automatiquement les mots de passe PJLink d'usine (panasonic, admin, JBMIA, 0000…)", "Automatically test factory PJLink passwords (panasonic, admin, JBMIA, 0000…)"),
                             tint: Theme.accent.swiftUI
                         ) {
                             model.fleet.autoUnlockPassword(for: pj)
@@ -123,10 +123,10 @@ struct InspectorView: View {
                     }
                 }
             }
-            FieldRow("Notes régie", width: 84) {
+            FieldRow(L("Notes régie", "Stage notes"), width: 84) {
                 CommitField(
                     value: pj.notes ?? "",
-                    placeholder: "Optique 0.8:1 · Pont face · Patch HDMI 1",
+                    placeholder: L("Optique 0.8:1 · Pont face · Patch HDMI 1", "Lens 0.8:1 · Front truss · HDMI 1 patch"),
                     onCommit: { notes in
                         model.fleet.updateProjector(pj.id) { $0.notes = notes.isEmpty ? nil : notes }
                     }
@@ -137,7 +137,7 @@ struct InspectorView: View {
 
     private func shutterAndPowerSection(_ pj: Projector, online: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader("Volet (Obturateur) & Alimentation") {
+            SectionHeader(L("Volet (Obturateur) & Alimentation", "Shutter & Power")) {
                 Text(pj.shutter.label)
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(pj.isShutterClosed ? Theme.accent.swiftUI : Theme.alive.swiftUI)
@@ -146,7 +146,7 @@ struct InspectorView: View {
             // Big Shutter Open / Close pair
             HStack(spacing: 6) {
                 TextButton(
-                    title: "NOIR · Fermer (31)",
+                    title: L("NOIR · Fermer (31)", "BLACKOUT · Close (31)"),
                     symbol: "eye.slash.fill",
                     prominent: pj.isShutterClosed,
                     tint: Theme.accent.swiftUI,
@@ -155,7 +155,7 @@ struct InspectorView: View {
                     model.fleet.setShutter(closed: true, on: [pj])
                 }
                 TextButton(
-                    title: "Ouvrir volet (30)",
+                    title: L("Ouvrir volet (30)", "Open Shutter (30)"),
                     symbol: "sun.max.fill",
                     prominent: online && !pj.isShutterClosed,
                     tint: Theme.alive.swiftUI,
@@ -168,7 +168,7 @@ struct InspectorView: View {
             // Granular Video / Audio / Freeze controls
             HStack(spacing: 6) {
                 TextButton(
-                    title: pj.shutter.isVideoMuted ? "Vidéo coupée" : "Vidéo seule",
+                    title: pj.shutter.isVideoMuted ? L("Vidéo coupée", "Video Muted") : L("Vidéo seule", "Video Mute"),
                     symbol: "video.slash.fill",
                     compact: true,
                     disabled: !online
@@ -176,7 +176,7 @@ struct InspectorView: View {
                     model.fleet.setVideoMute(!pj.shutter.isVideoMuted, on: pj)
                 }
                 TextButton(
-                    title: pj.shutter.isAudioMuted ? "Audio coupé" : "Audio seul",
+                    title: pj.shutter.isAudioMuted ? L("Audio coupé", "Audio Muted") : L("Audio seul", "Audio Mute"),
                     symbol: "speaker.slash.fill",
                     compact: true,
                     disabled: !online
@@ -185,7 +185,7 @@ struct InspectorView: View {
                 }
                 if pj.pjlinkClass >= 2 {
                     TextButton(
-                        title: pj.freeze ? "Gel actif" : "Gel (Freeze)",
+                        title: pj.freeze ? L("Gel actif", "Frozen") : L("Gel (Freeze)", "Freeze"),
                         symbol: "snowflake",
                         prominent: pj.freeze,
                         tint: Theme.tcp.swiftUI,
@@ -200,7 +200,7 @@ struct InspectorView: View {
             // Power On / Standby
             HStack(spacing: 6) {
                 TextButton(
-                    title: "Allumer (POWR 1)",
+                    title: L("Allumer (POWR 1)", "Power On (POWR 1)"),
                     symbol: "power",
                     prominent: pj.power == .on,
                     tint: Theme.alive.swiftUI,
@@ -210,7 +210,7 @@ struct InspectorView: View {
                     model.requestPower(on: true, targets: [pj])
                 }
                 TextButton(
-                    title: "Mettre en veille (POWR 0)",
+                    title: L("Mettre en veille (POWR 0)", "Standby (POWR 0)"),
                     symbol: "moon.zzz.fill",
                     prominent: pj.power == .standby,
                     tint: Theme.standby.swiftUI,
@@ -225,7 +225,7 @@ struct InspectorView: View {
 
     private func inputsSection(_ pj: Projector, online: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader("Entrées Vidéo (INPT / INST)") {
+            SectionHeader(L("Entrées Vidéo (INPT / INST)", "Video Inputs (INPT / INST)")) {
                 if let res = pj.inputResolution {
                     Text(res)
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
@@ -267,7 +267,7 @@ struct InspectorView: View {
                 }
             }
             if let native = pj.nativeResolution {
-                Text("Matrice native : \(native)" + (pj.inputResolution.map { " · Signal reçu : \($0)" } ?? ""))
+                Text(L("Matrice native : \(native)", "Native matrix: \(native)") + (pj.inputResolution.map { L(" · Signal reçu : \($0)", " · Input signal: \($0)") } ?? ""))
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(Theme.textFaint.swiftUI)
             }
@@ -276,7 +276,7 @@ struct InspectorView: View {
 
     private func healthAndLampsSection(_ pj: Projector) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader("Santé & Source lumineuse (ERST / LAMP)") {
+            SectionHeader(L("Santé & Source lumineuse (ERST / LAMP)", "Health & Light Source (ERST / LAMP)")) {
                 Chip(
                     text: pj.errors.isHealthy ? "OK · 000000" : pj.errors.rawCode,
                     tint: Theme.errorColor(pj.errors.highestSeverity).swiftUI
@@ -306,57 +306,57 @@ struct InspectorView: View {
 
             // Lamps & Filter hours
             ForEach(pj.lamps, id: \.index) { lamp in
-                infoRow("Source #\(lamp.index)", "\(Format.hours(lamp.hours)) · \(lamp.isOn ? "Allumée" : "Éteinte")")
+                infoRow(L("Source #\(lamp.index)", "Source #\(lamp.index)"), "\(Format.hours(lamp.hours)) · \(lamp.isOn ? L("Allumée", "On") : L("Éteinte", "Off"))")
             }
             if let filter = pj.filterHours {
-                infoRow("Filtre (FILT)", Format.hours(filter))
+                infoRow(L("Filtre (FILT)", "Filter (FILT)"), Format.hours(filter))
             }
             if let rlmp = pj.replacementLamp {
-                infoRow("Réf. source", rlmp)
+                infoRow(L("Réf. source", "Lamp part"), rlmp)
             }
             if let rfil = pj.replacementFilter {
-                infoRow("Réf. filtre", rfil)
+                infoRow(L("Réf. filtre", "Filter part"), rfil)
             }
         }
     }
 
     private func hardwareInfoSection(_ pj: Projector) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            SectionHeader("Identité PJLink")
-            infoRow("Nom PJLink", pj.pjlinkName ?? "—")
-            infoRow("Fabricant", pj.manufacturer ?? "—")
-            infoRow("Modèle", pj.modelName ?? "—")
+            SectionHeader(L("Identité PJLink", "PJLink Identity"))
+            infoRow(L("Nom PJLink", "PJLink Name"), pj.pjlinkName ?? "—")
+            infoRow(L("Fabricant", "Manufacturer"), pj.manufacturer ?? "—")
+            infoRow(L("Modèle", "Model"), pj.modelName ?? "—")
             if let info = pj.extraInfo, !info.isEmpty {
                 infoRow("Infos (INFO)", info)
             }
             if let sn = pj.serialNumber {
-                infoRow("N° de série", sn)
+                infoRow(L("N° de série", "Serial No."), sn)
             }
             if let fw = pj.firmwareVersion {
                 infoRow("Firmware", fw)
             }
             if let mac = pj.mac {
-                infoRow("Adresse MAC", mac)
+                infoRow(L("Adresse MAC", "MAC Address"), mac)
             }
             let slug = pj.displayTitle.lowercased().replacingOccurrences(of: " ", with: "-")
-            infoRow("Adresse OSC", "/simplepj/pj/\(slug)/shutter")
+            infoRow(L("Adresse OSC", "OSC Address"), "/simplepj/pj/\(slug)/shutter")
         }
     }
 
     private func directCommandSection(_ pj: Projector) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            SectionHeader("Commande PJLink directe")
+            SectionHeader(L("Commande PJLink directe", "Direct PJLink Command"))
             HStack(spacing: 6) {
                 CommitField(
                     value: rawCommandInput,
-                    placeholder: "%1POWR ? ou %2SNUM ?",
+                    placeholder: L("%1POWR ? ou %2SNUM ?", "%1POWR ? or %2SNUM ?"),
                     monospaced: true,
                     onCommit: { rawCommandInput = $0 },
                     onSubmit: { cmd in
                         model.fleet.sendRawCommand(cmd, to: pj)
                     }
                 )
-                TextButton(title: "Envoyer", symbol: "paperplane.fill", prominent: true, compact: true) {
+                TextButton(title: L("Envoyer", "Send"), symbol: "paperplane.fill", prominent: true, compact: true) {
                     model.fleet.sendRawCommand(rawCommandInput, to: pj)
                 }
             }
@@ -390,12 +390,12 @@ struct InspectorView: View {
 
     private func actionsFooterSection(_ pj: Projector) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionHeader("Actions")
+            SectionHeader(L("Actions", "Actions"))
             HStack(spacing: 6) {
-                TextButton(title: "Actualiser", symbol: "arrow.clockwise", compact: true) {
+                TextButton(title: L("Actualiser", "Refresh"), symbol: "arrow.clockwise", compact: true) {
                     model.fleet.refresh([pj], includeIdentity: true)
                 }
-                TextButton(title: "Interface Web", symbol: "safari", compact: true) {
+                TextButton(title: L("Interface Web", "Web UI"), symbol: "safari", compact: true) {
                     model.openWebInterface(pj)
                 }
                 if pj.mac != nil {
@@ -405,17 +405,17 @@ struct InspectorView: View {
                 }
             }
             HStack(spacing: 6) {
-                TextButton(title: "Copier IP", symbol: "doc.on.doc", compact: true) {
+                TextButton(title: L("Copier IP", "Copy IP"), symbol: "doc.on.doc", compact: true) {
                     AppModel.copyToPasteboard(pj.endpointLabel)
-                    model.flash("Adresse IP copiée")
+                    model.flash(L("Adresse IP copiée", "IP address copied"))
                 }
-                TextButton(title: "Copier OSC", symbol: "waveform.path", compact: true) {
+                TextButton(title: L("Copier OSC", "Copy OSC"), symbol: "waveform.path", compact: true) {
                     let slug = pj.displayTitle.lowercased().replacingOccurrences(of: " ", with: "-")
                     AppModel.copyToPasteboard("/simplepj/pj/\(slug)/shutter")
-                    model.flash("Adresse OSC copiée")
+                    model.flash(L("Adresse OSC copiée", "OSC address copied"))
                 }
                 Spacer()
-                TextButton(title: "Retirer", symbol: "trash", destructive: true, compact: true) {
+                TextButton(title: L("Retirer", "Remove"), symbol: "trash", destructive: true, compact: true) {
                     model.fleet.removeProjectors(ids: [pj.id])
                 }
             }
@@ -427,25 +427,25 @@ struct InspectorView: View {
     private var multiSelectionDetails: some View {
         let selected = model.fleet.selectedProjectors
         return VStack(alignment: .leading, spacing: 14) {
-            SectionHeader("Sélection multiple")
-            Text(Format.count(selected.count, "vidéoprojecteur") + " sélectionné\(selected.count > 1 ? "s" : "")")
+            SectionHeader(L("Sélection multiple", "Multiple Selection"))
+            Text(L(Format.count(selected.count, "vidéoprojecteur") + " sélectionné\(selected.count > 1 ? "s" : "")", "\(selected.count) projector\(selected.count > 1 ? "s" : "") selected"))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Theme.text.swiftUI)
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
-                    TextButton(title: "NOIR · Fermer volets", symbol: "eye.slash.fill", prominent: true, tint: Theme.accent.swiftUI) {
+                    TextButton(title: L("NOIR · Fermer volets", "BLACKOUT · Close Shutters"), symbol: "eye.slash.fill", prominent: true, tint: Theme.accent.swiftUI) {
                         model.fleet.setShutter(closed: true, on: selected)
                     }
-                    TextButton(title: "Ouvrir volets", symbol: "sun.max.fill", prominent: true, tint: Theme.alive.swiftUI) {
+                    TextButton(title: L("Ouvrir volets", "Open Shutters"), symbol: "sun.max.fill", prominent: true, tint: Theme.alive.swiftUI) {
                         model.fleet.setShutter(closed: false, on: selected)
                     }
                 }
                 HStack(spacing: 6) {
-                    TextButton(title: "Allumer la sélection", symbol: "power", compact: true) {
+                    TextButton(title: L("Allumer la sélection", "Power On Selected"), symbol: "power", compact: true) {
                         model.requestPower(on: true, targets: selected)
                     }
-                    TextButton(title: "Veille…", symbol: "moon.zzz.fill", compact: true) {
+                    TextButton(title: L("Veille…", "Standby…"), symbol: "moon.zzz.fill", compact: true) {
                         model.requestPower(on: false, targets: selected)
                     }
                 }
@@ -453,7 +453,7 @@ struct InspectorView: View {
 
             separator
 
-            SectionHeader("Projecteurs sélectionnés")
+            SectionHeader(L("Projecteurs sélectionnés", "Selected Projectors"))
             ForEach(selected) { pj in
                 HStack(spacing: 8) {
                     Circle().fill(Theme.statusColor(pj).swiftUI).frame(width: 6, height: 6)
@@ -472,10 +472,10 @@ struct InspectorView: View {
             Image(systemName: "videoprojector")
                 .font(.system(size: 28))
                 .foregroundStyle(Theme.textFaint.swiftUI)
-            Text("Sélectionnez un vidéoprojecteur")
+            Text(L("Sélectionnez un vidéoprojecteur", "Select a Projector"))
                 .font(.system(size: 12.5, weight: .medium))
                 .foregroundStyle(Theme.textDim.swiftUI)
-            Text("Inspectez son état PJLink Classe 1 & 2, ses entrées, ses heures de lampe/filtre, son diagnostic thermique et envoyez des commandes directes.")
+            Text(L("Inspectez son état PJLink Classe 1 & 2, ses entrées, ses heures de lampe/filtre, son diagnostic thermique et envoyez des commandes directes.", "Inspect its PJLink Class 1 & 2 status, inputs, lamp/filter hours, thermal diagnostics, and send direct commands."))
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.textFaint.swiftUI)
                 .multilineTextAlignment(.center)

@@ -15,17 +15,17 @@ enum PollInterval: Int, CaseIterable, Identifiable, Codable, Sendable {
 
     var label: String {
         switch self {
-        case .off: return "Manuel"
-        case .twoSeconds: return "Toutes les 2 s"
-        case .fiveSeconds: return "Toutes les 5 s"
-        case .tenSeconds: return "Toutes les 10 s"
-        case .thirtySeconds: return "Toutes les 30 s"
+        case .off: return L("Manuel", "Manual")
+        case .twoSeconds: return L("Toutes les 2 s", "Every 2 s")
+        case .fiveSeconds: return L("Toutes les 5 s", "Every 5 s")
+        case .tenSeconds: return L("Toutes les 10 s", "Every 10 s")
+        case .thirtySeconds: return L("Toutes les 30 s", "Every 30 s")
         }
     }
 
     var shortLabel: String {
         switch self {
-        case .off: return "Manuel"
+        case .off: return L("Manuel", "Manual")
         case .twoSeconds: return "2 s"
         case .fiveSeconds: return "5 s"
         case .tenSeconds: return "10 s"
@@ -46,13 +46,13 @@ enum SidebarFilter: Hashable, Sendable {
 
     var title: String {
         switch self {
-        case .all: return "Tous les projecteurs"
-        case .projecting: return "En projection (On + Ouvert)"
-        case .shutterClosed: return "Volet fermé (Noir)"
-        case .standby: return "En veille / Chauffe"
-        case .alerts: return "Alertes & Mots de passe"
-        case .offline: return "Hors ligne"
-        case .tag(let t): return "Groupe \(t)"
+        case .all: return L("Tous les projecteurs", "All Projectors")
+        case .projecting: return L("En projection (On + Ouvert)", "Projecting (On + Open)")
+        case .shutterClosed: return L("Volet fermé (Noir)", "Shutter Closed (Blackout)")
+        case .standby: return L("En veille / Chauffe", "Standby / Warm-up")
+        case .alerts: return L("Alertes & Mots de passe", "Alerts & Passwords")
+        case .offline: return L("Hors ligne", "Offline")
+        case .tag(let t): return L("Groupe \(t)", "Group \(t)")
         }
     }
 }
@@ -110,7 +110,7 @@ final class FleetController {
         }
     }
     var exchanges: [PJLinkExchange] = []
-    var statusMessage: String = "Prêt"
+    var statusMessage: String = L("Prêt", "Ready")
     var lastError: String? = nil
 
     // Simulator & External servers
@@ -233,15 +233,15 @@ final class FleetController {
 
     var activeTargetsScopeLabel: String {
         if !selection.isEmpty {
-            return Format.count(selection.count, "sélectionné")
+            return L(Format.count(selection.count, "sélectionné"), "\(selection.count) selected")
         }
         if case .tag(let t) = sidebarFilter {
-            return "Groupe \(t) (\(visibleProjectors.count))"
+            return L("Groupe \(t) (\(visibleProjectors.count))", "Group \(t) (\(visibleProjectors.count))")
         }
         if sidebarFilter != .all || !searchQuery.isEmpty {
-            return "Vue filtrée (\(visibleProjectors.count))"
+            return L("Vue filtrée (\(visibleProjectors.count))", "Filtered (\(visibleProjectors.count))")
         }
-        return "Tout le parc (\(projectors.count))"
+        return L("Tout le parc (\(projectors.count))", "All Fleet (\(projectors.count))")
     }
 
     var allTags: [(tag: String, count: Int)] {
@@ -294,8 +294,8 @@ final class FleetController {
         let list = targets ?? activeTargets
         guard !list.isEmpty else { return }
         let cmd: PJLinkCommand = closed ? .shutterClose : .shutterOpen
-        let verb = closed ? "Volet fermé (Noir)" : "Volet ouvert"
-        statusMessage = "\(verb) → \(Format.count(list.count, "projecteur"))…"
+        let verb = closed ? L("Volet fermé (Noir)", "Shutter closed (Blackout)") : L("Volet ouvert", "Shutter open")
+        statusMessage = "\(verb) → \(Format.count(list.count, L("projecteur", "projector")))…"
         executeOnTargets(list, commands: [cmd, .shutterQuery])
     }
 
@@ -311,8 +311,8 @@ final class FleetController {
         let list = targets ?? activeTargets
         guard !list.isEmpty else { return }
         let cmd: PJLinkCommand = on ? .powerOn : .powerOff
-        let verb = on ? "Allumage" : "Mise en veille"
-        statusMessage = "\(verb) → \(Format.count(list.count, "projecteur"))…"
+        let verb = on ? L("Allumage", "Power On") : L("Mise en veille", "Standby")
+        statusMessage = "\(verb) → \(Format.count(list.count, L("projecteur", "projector")))…"
         executeOnTargets(list, commands: [cmd, .powerQuery])
         // Schedule a follow-up poll 1.2s later to catch warm-up -> on or cooling -> standby transitions
         Task { @MainActor [weak self] in
@@ -325,14 +325,14 @@ final class FleetController {
         let list = targets ?? activeTargets
         guard !list.isEmpty else { return }
         let cmd: PJLinkCommand = .freeze(freeze)
-        statusMessage = (freeze ? "Gel d'image activé" : "Gel d'image désactivé") + " → \(Format.count(list.count, "projecteur"))"
+        statusMessage = (freeze ? L("Gel d'image activé", "Freeze enabled") : L("Gel d'image désactivé", "Freeze disabled")) + " → \(Format.count(list.count, L("projecteur", "projector")))"
         executeOnTargets(list, commands: [cmd, .freezeQuery])
     }
 
     func setInput(_ code: String, on targets: [Projector]? = nil) {
         let list = targets ?? activeTargets
         guard !list.isEmpty else { return }
-        statusMessage = "Entrée \(code) → \(Format.count(list.count, "projecteur"))…"
+        statusMessage = L("Entrée \(code)", "Input \(code)") + " → \(Format.count(list.count, L("projecteur", "projector")))…"
         executeOnTargets(list, commands: [.inputSelect(code), .inputQuery])
     }
 
@@ -375,7 +375,7 @@ final class FleetController {
     }
 
     func autoUnlockPassword(for projector: Projector) {
-        statusMessage = "Test des mots de passe PJLink courants sur \(projector.displayTitle)…"
+        statusMessage = L("Test des mots de passe PJLink courants sur \(projector.displayTitle)…", "Testing common PJLink passwords on \(projector.displayTitle)…")
         let ip = projector.ip
         let port = projector.port
         let id = projector.id
@@ -386,12 +386,12 @@ final class FleetController {
                 if let pwd = found {
                     self.projectors[idx].password = pwd
                     self.statusMessage = pwd.isEmpty
-                        ? "\(self.projectors[idx].displayTitle) ne requiert pas de mot de passe"
-                        : "Mot de passe trouvé pour \(self.projectors[idx].displayTitle) : « \(pwd) »"
+                        ? L("\(self.projectors[idx].displayTitle) ne requiert pas de mot de passe", "\(self.projectors[idx].displayTitle) does not require a password")
+                        : L("Mot de passe trouvé pour \(self.projectors[idx].displayTitle) : « \(pwd) »", "Password found for \(self.projectors[idx].displayTitle): \"\(pwd)\"")
                     self.saveFleet()
                     self.refresh([self.projectors[idx]], includeIdentity: true)
                 } else {
-                    self.statusMessage = "Aucun mot de passe d'usine reconnu pour \(self.projectors[idx].displayTitle)"
+                    self.statusMessage = L("Aucun mot de passe d'usine reconnu pour \(self.projectors[idx].displayTitle)", "No factory password matched for \(self.projectors[idx].displayTitle)")
                 }
             }
         }
@@ -442,7 +442,7 @@ final class FleetController {
         scannedCount = 0
         scanTotalCount = endpoints.count
         lastError = nil
-        statusMessage = "Recherche PJLink (:4352) sur \(Format.count(endpoints.count, "adresse"))…"
+        statusMessage = L("Recherche PJLink (:4352) sur \(Format.count(endpoints.count, "adresse"))…", "Scanning PJLink (:4352) across \(endpoints.count) address\(endpoints.count > 1 ? "es" : "")…")
         cancelScanFlag.set(false)
 
         var passwordMap: [String: String] = [:]
@@ -469,7 +469,7 @@ final class FleetController {
     func stopDiscovery() {
         cancelScanFlag.set(true)
         isScanning = false
-        statusMessage = "Recherche interrompue"
+        statusMessage = L("Recherche interrompue", "Discovery stopped")
     }
 
     private func handleDiscoveryEvent(_ event: PJLinkDiscoveryEvent) {
@@ -488,11 +488,11 @@ final class FleetController {
             isScanning = false
             scanProgress = 1
             lastScanDuration = duration
-            let sec = String(format: "%.1f s", duration).replacingOccurrences(of: ".", with: ",")
+            let sec = String(format: "%.1f s", duration).replacingOccurrences(of: ".", with: L(",", "."))
             if foundCount == 0 {
-                statusMessage = "Aucun projecteur PJLink trouvé sur \(rangeInput) (\(sec))"
+                statusMessage = L("Aucun projecteur PJLink trouvé sur \(rangeInput) (\(sec))", "No PJLink projectors found on \(rangeInput) (\(sec))")
             } else {
-                statusMessage = "\(Format.count(foundCount, "projecteur")) découvert\(foundCount > 1 ? "s" : "") en \(sec)"
+                statusMessage = L("\(Format.count(foundCount, "projecteur")) découvert\(foundCount > 1 ? "s" : "") en \(sec)", "\(foundCount) projector\(foundCount > 1 ? "s" : "") discovered in \(sec)")
             }
             saveFleet()
         }
@@ -584,7 +584,7 @@ final class FleetController {
             isDemoRigActive = false
             projectors.removeAll(where: \.isSimulated)
             selection = Set(selection.filter { id in projectors.contains(where: { $0.id == id }) })
-            statusMessage = "Simulateur de plateau arrêté"
+            statusMessage = L("Simulateur de plateau arrêté", "Simulated stage rig stopped")
             saveFleet()
         } else {
             do {
@@ -595,10 +595,10 @@ final class FleetController {
                 if let first = simulated.first {
                     selection = [first.id]
                 }
-                statusMessage = "Plateau simulé actif : 4 vidéoprojecteurs PJLink Classe 2 sur 127.0.0.1"
+                statusMessage = L("Plateau simulé actif : 4 vidéoprojecteurs PJLink Classe 2 sur 127.0.0.1", "Simulated stage rig active: 4 PJLink Class 2 projectors on 127.0.0.1")
             } catch {
                 lastError = error.localizedDescription
-                statusMessage = "Impossible de démarrer le simulateur : \(error.localizedDescription)"
+                statusMessage = L("Impossible de démarrer le simulateur : \(error.localizedDescription)", "Could not start simulator: \(error.localizedDescription)")
             }
         }
     }
@@ -624,7 +624,7 @@ final class FleetController {
     @discardableResult
     func importEntries(_ entries: [ProjectorManagerImporter.Entry], sourceLabel: String) -> Int {
         guard !entries.isEmpty else {
-            statusMessage = "Aucun vidéoprojecteur trouvé dans \(sourceLabel)"
+            statusMessage = L("Aucun vidéoprojecteur trouvé dans \(sourceLabel)", "No projectors found in \(sourceLabel)")
             return 0
         }
         var addedOrUpdated: [Projector] = []
@@ -645,7 +645,7 @@ final class FleetController {
         }
         saveFleet()
         refresh(addedOrUpdated, includeIdentity: true)
-        statusMessage = "\(Format.count(addedOrUpdated.count, "projecteur")) importé\(addedOrUpdated.count > 1 ? "s" : "") depuis \(sourceLabel)"
+        statusMessage = L("\(Format.count(addedOrUpdated.count, "projecteur")) importé\(addedOrUpdated.count > 1 ? "s" : "") depuis \(sourceLabel)", "\(addedOrUpdated.count) projector\(addedOrUpdated.count > 1 ? "s" : "") imported from \(sourceLabel)")
         return addedOrUpdated.count
     }
 
