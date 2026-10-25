@@ -886,7 +886,7 @@ final class FleetController {
 
     nonisolated private func handleHTTPConnection(_ fd: Int32) {
         defer { Darwin.close(fd) }
-        var buf = [UInt8](repeating: 0, count: 4096)
+        var buf = [UInt8](repeating: 0, count: 16384)
         let n = Darwin.recv(fd, &buf, buf.count, 0)
         guard n > 0 else { return }
         let requestText = String(decoding: buf[0..<n], as: UTF8.self)
@@ -894,44 +894,252 @@ final class FleetController {
         let tokens = firstLine.split(separator: " ").map(String.init)
         guard tokens.count >= 2 else { return }
         let method = tokens[0].uppercased()
-        let path = tokens[1]
+        let rawTarget = tokens[1]
+        let pathParts = rawTarget.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+        let path = String(pathParts.first ?? "")
+        let query = pathParts.count > 1 ? String(pathParts[1]) : ""
+
+        // Extract JSON body after \r\n\r\n
+        var jsonArgs: [String: Any] = [:]
+        if let bodyRange = requestText.range(of: "\r\n\r\n") {
+            let bodyStr = String(requestText[bodyRange.upperBound...])
+            if let data = bodyStr.data(using: .utf8),
+               let parsed = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                jsonArgs = parsed
+            }
+        }
+        let args = jsonArgs
 
         let sem = DispatchSemaphore(value: 0)
         let box = LockBox<Data>(Data("{\"ok\":true}".utf8))
         let statusBox = LockBox<Int>(200)
+        let contentTypeBox = LockBox<String>("application/json; charset=utf-8")
 
         Task { @MainActor [weak self] in
             defer { sem.signal() }
             guard let self else { return }
-            if method == "GET" && (path == "/v1/projectors" || path == "/v1/status") {
-                let doc = FleetDocument(projectors: self.projectors)
-                if let json = try? doc.encodeJSON() {
-                    box.set(json)
-                }
-            } else if method == "POST" && path == "/v1/all/shutter/close" {
-                self.setShutter(closed: true, on: self.projectors)
-            } else if method == "POST" && path == "/v1/all/shutter/open" {
-                self.setShutter(closed: false, on: self.projectors)
-            } else if method == "POST" && path == "/v1/all/power/on" {
-                self.setPower(on: true, on: self.projectors)
-            } else if method == "POST" && path == "/v1/all/power/off" {
-                self.setPower(on: false, on: self.projectors)
-            } else if method == "POST" && path == "/v1/refresh" {
-                self.refreshAll()
-            } else {
-                statusBox.set(404)
-                box.set(Data("{\"error\":\"not found\"}".utf8))
-            }
+            self.dispatchHTTPRequest(
+                method: method,
+                path: path,
+                query: query,
+                args: args,
+                box: box,
+                statusBox: statusBox,
+                contentTypeBox: contentTypeBox
+            )
         }
-        _ = sem.wait(timeout: .now() + 2.0)
+        _ = sem.wait(timeout: .now() + 3.0)
 
         let body = box.get()
         let code = statusBox.get()
-        let header = "HTTP/1.1 \(code) \(code == 200 ? "OK" : "Not Found")\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
+        let ctype = contentTypeBox.get()
+        let header = "HTTP/1.1 \(code) \(code == 200 ? "OK" : "Not Found")\r\nContent-Type: \(ctype)\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
         var response = Data(header.utf8)
         response.append(body)
         _ = response.withUnsafeBytes { ptr in
             Darwin.send(fd, ptr.baseAddress!, response.count, 0)
+        }
+    }
+
+    private func resolveHTTPTargets(_ target: String?) -> [Projector] {
+        let key = (target ?? "all").trimmingCharacters(in: .whitespacesAndNewlines)
+        if key.isEmpty || key.lowercased() == "all" {
+            return projectors
+        }
+        if key.hasPrefix("#") {
+            let tag = key.lowercased()
+            return projectors.filter { $0.tags.contains(tag) }
+        }
+        return matchProjectors(byKey: key.lowercased())
+    }
+
+    private func dispatchHTTPRequest(
+        method: String,
+        path: String,
+        query: String,
+        args: [String: Any],
+        box: LockBox<Data>,
+        statusBox: LockBox<Int>,
+        contentTypeBox: LockBox<String>
+    ) {
+        func writeJSON(_ dict: [String: Any]) {
+            if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]) {
+                box.set(data)
+            }
+        }
+
+        switch (method, path) {
+        case ("GET", "/v1/state"), ("GET", "/v1/status"):
+            writeJSON([
+                "app": "SimplePJ",
+                "version": AppVersion.current.version,
+                "projectorCount": projectors.count,
+                "onlineCount": onlineCount,
+                "projectingCount": projectingCount,
+                "shutterClosedCount": shutterClosedCount,
+                "standbyCount": standbyCount,
+                "alertCount": alertCount,
+                "groups": allTags.map { ["tag": $0.tag, "count": $0.count] },
+                "scanRange": rangeInput,
+                "isScanning": isScanning,
+                "isDemoRigActive": isDemoRigActive,
+                "pollIntervalSeconds": pollInterval.rawValue,
+                "oscInPort": Int(oscServer?.port ?? kSimplePJDefaultOSCInPort),
+                "apiPort": Int(httpPort),
+                "statusMessage": statusMessage,
+            ])
+
+        case ("GET", "/v1/projectors"):
+            let doc = FleetDocument(scanRange: rangeInput, projectors: projectors)
+            if let json = try? doc.encodeJSON() {
+                box.set(json)
+            }
+
+        case ("GET", "/v1/help"):
+            writeJSON([
+                "app": "SimplePJ",
+                "httpEndpoints": [
+                    "GET /v1/state",
+                    "GET /v1/projectors",
+                    "GET /v1/help",
+                    "GET /v1/snapshot.png?view=cards|table",
+                    "POST /v1/shutter {\"target\":\"all|#tag|1|ip\",\"closed\":true,\"mode\":\"all|video|audio\"}",
+                    "POST /v1/power {\"target\":\"all|#tag|1|ip\",\"on\":true}",
+                    "POST /v1/input {\"target\":\"all|#tag|1|ip\",\"code\":\"31|HDMI 1\"}",
+                    "POST /v1/freeze {\"target\":\"all|#tag|1|ip\",\"freeze\":true}",
+                    "POST /v1/discover {\"range\":\"10.0.0.0/24\",\"simulate\":true,\"importProjectorManager\":true}",
+                    "POST /v1/projectors {\"ip\":\"10.0.0.2\",\"port\":4352,\"label\":\"Face Cour #face\",\"password\":\"\"}",
+                    "POST /v1/command {\"target\":\"1\",\"raw\":\"%1LAMP ?\",\"refresh\":true}",
+                    "POST /v1/refresh",
+                ],
+                "oscAddresses": [
+                    "/simplepj/all/shutter 1|0",
+                    "/simplepj/all/power 1|0",
+                    "/simplepj/all/freeze 1|0",
+                    "/simplepj/all/input <code|name>",
+                    "/simplepj/group/<tag>/shutter 1|0",
+                    "/simplepj/pj/<index|ip|name>/shutter 1|0",
+                    "/simplepj/pj/<index|ip|name>/input <code|name>",
+                    "/simplepj/pj/<index|ip|name>/raw \"%1LAMP ?\"",
+                    "/simplepj/refresh",
+                ],
+                "appleScript": [
+                    "tell application \"SimplePJ\" to PowerOn 0",
+                    "tell application \"SimplePJ\" to PowerOff 0",
+                    "tell application \"SimplePJ\" to AvMute 0",
+                    "tell application \"SimplePJ\" to AvUnMute 0",
+                    "tell application \"SimplePJ\" to Inpt {31, 0}",
+                ],
+            ])
+
+        case ("GET", "/v1/snapshot.png"):
+            let snapshotModel = AppModel(startServices: false, persistEnabled: false)
+            snapshotModel.fleet.projectors = self.projectors
+            snapshotModel.fleet.selection = self.selection
+            snapshotModel.fleet.rangeInput = self.rangeInput
+            if snapshotModel.fleet.projectors.isEmpty {
+                SyntheticFleet.load(into: snapshotModel)
+            }
+            if query.contains("view=table") {
+                snapshotModel.viewMode = .table
+            }
+            if let png = Snapshot.renderOffscreenPNG(model: snapshotModel) {
+                contentTypeBox.set("image/png")
+                box.set(png)
+            }
+
+        case ("POST", "/v1/shutter"):
+            let targets = resolveHTTPTargets(args["target"] as? String)
+            let closed = (args["closed"] as? Bool) ?? true
+            let mode = ((args["mode"] as? String) ?? "all").lowercased()
+            if mode == "video", let first = targets.first {
+                setVideoMute(closed, on: first)
+            } else if mode == "audio", let first = targets.first {
+                setAudioMute(closed, on: first)
+            } else {
+                setShutter(closed: closed, on: targets)
+            }
+            writeJSON(["ok": true, "targetCount": targets.count, "closed": closed, "mode": mode])
+
+        case ("POST", "/v1/power"):
+            let targets = resolveHTTPTargets(args["target"] as? String)
+            let on = (args["on"] as? Bool) ?? true
+            setPower(on: on, on: targets)
+            writeJSON(["ok": true, "targetCount": targets.count, "on": on])
+
+        case ("POST", "/v1/input"):
+            let targets = resolveHTTPTargets(args["target"] as? String)
+            let rawCode = (args["code"] as? String) ?? "31"
+            let resolved = resolveInputCode(rawCode, for: targets.first)
+            setInput(resolved, on: targets)
+            writeJSON(["ok": true, "targetCount": targets.count, "code": resolved])
+
+        case ("POST", "/v1/freeze"):
+            let targets = resolveHTTPTargets(args["target"] as? String)
+            let freeze = (args["freeze"] as? Bool) ?? true
+            setFreeze(freeze, on: targets)
+            writeJSON(["ok": true, "targetCount": targets.count, "freeze": freeze])
+
+        case ("POST", "/v1/discover"):
+            if (args["importProjectorManager"] as? Bool) == true {
+                let imported = importFromProjectorManager()
+                writeJSON(["ok": true, "importedFromProjectorManager": imported, "projectorCount": projectors.count])
+            } else if (args["simulate"] as? Bool) == true {
+                toggleSimulatedStageRig()
+                writeJSON(["ok": true, "isDemoRigActive": isDemoRigActive, "projectorCount": projectors.count])
+            } else {
+                if let r = args["range"] as? String, !r.isEmpty {
+                    rangeInput = r
+                }
+                startDiscovery()
+                writeJSON(["ok": true, "scanning": rangeInput])
+            }
+
+        case ("POST", "/v1/projectors"):
+            guard let ip = args["ip"] as? String, !ip.isEmpty else {
+                statusBox.set(400)
+                writeJSON(["error": "missing 'ip'"])
+                return
+            }
+            let port = UInt16((args["port"] as? Int) ?? Int(kPJLinkDefaultPort))
+            let pj = addProjector(
+                ip: ip,
+                port: port,
+                label: args["label"] as? String,
+                password: (args["password"] as? String) ?? "",
+                notes: args["notes"] as? String
+            )
+            writeJSON(["ok": true, "id": pj.id.uuidString, "ip": pj.ip, "port": Int(pj.port), "label": pj.displayTitle])
+
+        case ("POST", "/v1/command"):
+            if (args["refresh"] as? Bool) == true {
+                refreshAll(includeIdentity: true)
+                writeJSON(["ok": true, "refreshed": projectors.count])
+            } else if let raw = args["raw"] as? String, !raw.isEmpty {
+                let targets = resolveHTTPTargets(args["target"] as? String)
+                if let first = targets.first {
+                    sendRawCommand(raw, to: first)
+                }
+                writeJSON(["ok": true, "raw": raw, "targetCount": targets.count])
+            } else {
+                refreshAll()
+                writeJSON(["ok": true])
+            }
+
+        case ("POST", "/v1/all/shutter/close"):
+            setShutter(closed: true, on: projectors)
+        case ("POST", "/v1/all/shutter/open"):
+            setShutter(closed: false, on: projectors)
+        case ("POST", "/v1/all/power/on"):
+            setPower(on: true, on: projectors)
+        case ("POST", "/v1/all/power/off"):
+            setPower(on: false, on: projectors)
+        case ("POST", "/v1/refresh"):
+            refreshAll()
+
+        default:
+            statusBox.set(404)
+            writeJSON(["error": "not found", "path": path])
         }
     }
 

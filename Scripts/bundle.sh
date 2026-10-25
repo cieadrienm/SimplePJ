@@ -18,6 +18,7 @@ APP="${APP:-build/SimplePJ.app}"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN/SimplePJ" "$APP/Contents/MacOS/SimplePJ"
+cp "$BIN/simplepj-mcp" "$APP/Contents/MacOS/simplepj-mcp"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp Resources/SimplePJ.sdef "$APP/Contents/Resources/SimplePJ.sdef"
 
@@ -79,10 +80,10 @@ case "$SIGN_IDENTITY" in
     "Developer ID Application:"*) SIGN_FLAGS="--timestamp --options runtime" ;;
     *) SIGN_FLAGS="--timestamp=none" ;;
 esac
-if ! codesign --force $SIGN_FLAGS --sign "$SIGN_IDENTITY" "$APP" 2>/tmp/simplepj-codesign.log; then
+if ! codesign --force $SIGN_FLAGS --sign "$SIGN_IDENTITY" "$APP/Contents/MacOS/simplepj-mcp" "$APP" 2>/tmp/simplepj-codesign.log; then
     echo "warning: signing with '$SIGN_IDENTITY' failed; falling back to ad hoc" >&2
     SIGN_IDENTITY="-"
-    codesign --force --sign - "$APP"
+    codesign --force --sign - "$APP/Contents/MacOS/simplepj-mcp" "$APP"
 fi
 echo "signed: $SIGN_IDENTITY" >&2
 

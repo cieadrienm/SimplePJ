@@ -235,21 +235,31 @@ struct OSCGuideSheet: View {
         ("/simplepj/refresh", "(aucun)", "Relancer une interrogation immédiate du parc"),
     ]
 
+    private static let mcpConfigJSON = """
+    {
+      "mcpServers": {
+        "simplepj": {
+          "command": "/Applications/SimplePJ.app/Contents/MacOS/simplepj-mcp"
+        }
+      }
+    }
+    """
+
     var body: some View {
         let oscPort = model.fleet.oscServer?.port ?? kSimplePJDefaultOSCInPort
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Pilotage OSC & API HTTP — SimplePJ")
+                    Text("Pilotage OSC, API HTTP & Serveur MCP — SimplePJ")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Theme.text.swiftUI)
-                    Text("Pilotez vos vidéoprojecteurs depuis OSCScore, Montage, eMotion, QLab ou Chataigne.")
+                    Text("Pilotez vos vidéoprojecteurs depuis OSCScore, Montage, eMotion, QLab, Chataigne ou un agent MCP.")
                         .font(.system(size: 11.5))
                         .foregroundStyle(Theme.textDim.swiftUI)
                 }
                 Spacer()
                 Chip(text: "OSC UDP :\(oscPort)", tint: Theme.osc.swiftUI, filled: true)
-                Chip(text: "HTTP :\(model.fleet.httpPort)/v1", tint: Theme.tcp.swiftUI)
+                Chip(text: "HTTP/MCP :\(model.fleet.httpPort)", tint: Theme.tcp.swiftUI)
             }
 
             Rectangle().fill(Theme.separator.swiftUI).frame(height: 1)
@@ -289,27 +299,35 @@ struct OSCGuideSheet: View {
                     }
                 }
             }
-            .frame(height: 270)
+            .frame(height: 235)
 
-            SectionHeader("AppleScript (compatible ProjectorManager), CLI & API HTTP")
-            VStack(alignment: .leading, spacing: 3) {
+            SectionHeader("Serveur MCP (simplepj-mcp), AppleScript, CLI & API HTTP")
+            VStack(alignment: .leading, spacing: 4) {
+                Text(verbatim: "MCP (stdio) : /Applications/SimplePJ.app/Contents/MacOS/simplepj-mcp  (simplepj_state, simplepj_shutter, simplepj_input, simplepj_snapshot…)")
+                    .font(.system(size: 10.5, design: .monospaced))
+                    .foregroundStyle(Theme.tcp.swiftUI)
+                    .textSelection(.enabled)
                 Text(verbatim: "AppleScript : tell application \"SimplePJ\" to AvMute 0   |   PowerOn 0   |   PowerOff 0   |   Inpt {31, 0}")
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(Theme.text.swiftUI)
                     .textSelection(.enabled)
-                Text(verbatim: "CLI : SimplePJ --cmd all shutter-close   |   HTTP : POST http://127.0.0.1:\(model.fleet.httpPort)/v1/all/shutter/close")
+                Text(verbatim: "CLI : SimplePJ --cmd all shutter-close   |   HTTP : POST http://127.0.0.1:\(model.fleet.httpPort)/v1/shutter {\"target\":\"all\",\"closed\":true}")
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(Theme.textDim.swiftUI)
                     .textSelection(.enabled)
             }
 
             HStack {
+                TextButton(title: "Copier config MCP JSON", symbol: "doc.on.doc", compact: true) {
+                    AppModel.copyToPasteboard(Self.mcpConfigJSON)
+                    model.flash("Configuration MCP copiée")
+                }
                 Spacer()
                 Button("Fermer", action: close).keyboardShortcut(.defaultAction)
             }
         }
         .padding(20)
-        .frame(width: 740)
+        .frame(width: 760)
         .background(Theme.panel.swiftUI)
         .preferredColorScheme(.dark)
     }
@@ -345,16 +363,16 @@ struct AboutSheet: View {
             detail: "Scan TCP :4352 parallèle d'un /24 en ~1,5 s + broadcast UDP %2SRCH + table ARP MAC + test automatique des mots de passe PJLink d'usine."
         ),
         Feature(
-            icon: "number",
+            icon: "antenna.radiowaves.left.and.right",
             tint: Theme.osc,
-            title: "Groupes de plateau & Conduite OSC",
-            detail: "Groupez vos projecteurs par #tags (#face, #cyclo, #sol) et déclenchez volets et entrées simultanément au clavier, en OSC (:9130) ou HTTP (:17930)."
+            title: "Groupes #tags, OSC, HTTP & MCP",
+            detail: "Groupez vos projecteurs (#face, #cyclo, #sol) et pilotez-les au clavier, en OSC (:9130), HTTP (/v1 :17930), AppleScript ou via le serveur MCP (simplepj-mcp)."
         ),
         Feature(
             icon: "play.tv",
             tint: Theme.tcp,
-            title: "Simulateur de plateau intégré",
-            detail: "4 serveurs TCP PJLink Classe 2 embarqués sur 127.0.0.1 pour préparer et tester vos conduites sans projecteur physique."
+            title: "Simulateur de plateau & Import",
+            detail: "4 serveurs TCP PJLink Classe 2 embarqués sur 127.0.0.1 pour préparer vos conduites hors plateau, et import en 1 clic depuis ProjectorManager."
         ),
     ]
 
@@ -388,14 +406,14 @@ struct AboutSheet: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    Text("Contrôleur de vidéoprojecteurs PJLink natif, rapide et malin pour macOS — dans la lignée de SimpleAudio, SimpleScanner et SimpleRecorder")
+                    Text("Contrôleur de vidéoprojecteurs PJLink natif ultra-léger — volets, entrées, groupes #tags, simulateur & OSC/MCP")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Theme.textDim.swiftUI)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 8) {
                         pill(icon: "bolt.fill", text: "PJLink Cl. 1 & 2", tint: Theme.accent)
                         pill(icon: "waveform.path", text: "OSC UDP :\(model.fleet.oscServer?.port ?? kSimplePJDefaultOSCInPort)", tint: Theme.osc)
-                        pill(icon: "network", text: "HTTP /v1 :\(model.fleet.httpPort)", tint: Theme.tcp)
+                        pill(icon: "network", text: "HTTP / MCP :\(model.fleet.httpPort)", tint: Theme.tcp)
                     }
                     .padding(.top, 2)
                 }
@@ -488,6 +506,7 @@ struct ShortcutsSheet: View {
             ("⇧⌘D", "Découvrir les projecteurs PJLink (:4352) sur le réseau"),
             ("⌘.", "Arrêter la découverte en cours"),
             ("⌘N", "Ajouter un vidéoprojecteur par IP"),
+            ("⇧⌘I", "Importer depuis ProjectorManager"),
             ("⌘R", "Actualiser l'état PJLink de tout le parc"),
             ("⌘O / ⌘S", "Ouvrir / Enregistrer un fichier de parc (.simplepj)"),
             ("⌘E", "Exporter la fiche technique (TXT, CSV, JSON)"),
@@ -540,67 +559,314 @@ struct ShortcutsSheet: View {
     }
 }
 
-// MARK: - Help Manual Sheet
+// MARK: - Multi-Section Help Manual Sheet (Simple family layout)
 
 struct HelpManualSheet: View {
     let openShortcuts: () -> Void
     let close: () -> Void
 
+    enum SectionID: String, CaseIterable, Identifiable {
+        case quickStart = "Démarrage rapide"
+        case stageAndGroups = "Plateau & Groupes"
+        case pjlinkProtocol = "PJLink Classe 1 & 2"
+        case projectorManager = "ProjectorManager"
+        case oscAndMCP = "OSC, API HTTP & MCP"
+
+        var id: String { rawValue }
+
+        var icon: String {
+            switch self {
+            case .quickStart: return "play.circle"
+            case .stageAndGroups: return "sun.max.fill"
+            case .pjlinkProtocol: return "bolt.horizontal.circle"
+            case .projectorManager: return "square.and.arrow.down"
+            case .oscAndMCP: return "antenna.radiowaves.left.and.right"
+            }
+        }
+    }
+
+    @State private var selectedSection: SectionID = .quickStart
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Guide d'utilisation — SimplePJ")
-                    .font(.system(size: 16, weight: .semibold))
+        VStack(spacing: 0) {
+            // Top Header
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: "book.closed")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.accent.swiftUI)
+                Text("Guide d’utilisation — SimplePJ")
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.text.swiftUI)
                 Spacer()
-                TextButton(title: "Raccourcis (⌘/)", symbol: "keyboard", compact: true) {
+                Text(AppVersion.current.shortLabel)
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundStyle(Theme.textFaint.swiftUI)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(Theme.header.swiftUI)
+
+            Rectangle().fill(Theme.separator.swiftUI).frame(height: 1)
+
+            // Sidebar + Content
+            HStack(spacing: 0) {
+                sidebar
+                    .frame(width: 204)
+                Rectangle().fill(Theme.separator.swiftUI).frame(width: 1)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        sectionContent(selectedSection)
+                    }
+                    .padding(22)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                .background(Theme.panel.swiftUI)
+            }
+
+            Rectangle().fill(Theme.separator.swiftUI).frame(height: 1)
+
+            // Footer
+            HStack {
+                Button {
                     close()
                     openShortcuts()
+                } label: {
+                    Label("Raccourcis clavier (⌘/)", systemImage: "command")
+                        .font(.system(size: 11.5))
                 }
-                Button("Fermer", action: close).keyboardShortcut(.defaultAction)
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.textDim.swiftUI)
+
+                Spacer()
+
+                Button("OK", action: close)
+                    .keyboardShortcut(.defaultAction)
             }
-            Rectangle().fill(Theme.separator.swiftUI).frame(height: 1)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    helpBlock(
-                        "1. Découverte automatique (:4352) & Authentification",
-                        "Choisissez votre interface réseau en haut à gauche puis cliquez sur « Découvrir » (⇧⌘D). SimplePJ sonde le port TCP 4352 sur tout le sous-réseau en moins de deux secondes, envoie une annonce UDP %2SRCH (Classe 2), relève les adresses MAC dans la table ARP et interroge chaque projecteur.\nSi un projecteur exige un mot de passe (PJLINK 1), cliquez sur l'icône clé pour tester automatiquement les mots de passe d'usine courants (panasonic, admin, pjlink, JBMIA, 0000…)."
-                    )
-                    helpBlock(
-                        "2. Volets (Noir plateau) vs Alimentation",
-                        "En spectacle, le bouton « VOLET FERMÉ · NOIR » (AVMT 31, raccourci ⌘B) coupe instantanément le faisceau lumineux sans éteindre la source laser ou lampe. L'extinction (« Veille », POWR 0) demande une confirmation de sécurité afin d'éviter toute coupure accidentelle en représentation (maintenez ⌥ pour contourner la confirmation)."
-                    )
-                    helpBlock(
-                        "3. Groupes de plateau (#tags) & Sélection",
-                        "Ajoutez des #tags directement dans le nom d'un projecteur (ex. « Face Cour #face #cour », « Cyclo #cyclo »). Vos groupes apparaissent automatiquement dans la barre latérale gauche : un clic filtre la vue, et un clic droit permet d'ouvrir ou fermer les volets de tout le groupe d'un seul geste."
-                    )
-                    helpBlock(
-                        "4. Pilotage OSC (:9130), HTTP (:17930) & Ligne de commande",
-                        "SimplePJ écoute en continu les commandes OSC sur le port UDP 9130 (/simplepj/all/shutter 1, /simplepj/group/face/shutter 0, /simplepj/pj/1/input 31) ainsi que les requêtes HTTP JSON sur 127.0.0.1:17930/v1. Vous pouvez aussi piloter vos projecteurs depuis le Terminal : SimplePJ --cmd all shutter-close."
-                    )
-                }
-            }
-            .frame(height: 360)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(Theme.header.swiftUI)
         }
-        .padding(20)
-        .frame(width: 720)
+        .frame(width: 760, height: 520)
         .background(Theme.panel.swiftUI)
         .preferredColorScheme(.dark)
     }
 
-    private func helpBlock(_ title: String, _ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(Theme.accent.swiftUI)
-            Text(text)
-                .font(.system(size: 11.5))
-                .foregroundStyle(Theme.textDim.swiftUI)
-                .fixedSize(horizontal: false, vertical: true)
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(SectionID.allCases) { section in
+                let isSelected = selectedSection == section
+                Button {
+                    selectedSection = section
+                } label: {
+                    HStack(spacing: 9) {
+                        Image(systemName: section.icon)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(isSelected ? Theme.accent.swiftUI : Theme.textDim.swiftUI)
+                            .frame(width: 16)
+                        Text(section.rawValue)
+                            .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                            .foregroundStyle(isSelected ? Theme.text.swiftUI : Theme.textDim.swiftUI)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(isSelected ? Theme.laneSelected.swiftUI : Color.clear)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer()
         }
         .padding(10)
+        .background(Theme.background.swiftUI)
+    }
+
+    @ViewBuilder
+    private func sectionContent(_ section: SectionID) -> some View {
+        switch section {
+        case .quickStart:
+            quickStartSection
+        case .stageAndGroups:
+            stageAndGroupsSection
+        case .pjlinkProtocol:
+            pjlinkProtocolSection
+        case .projectorManager:
+            projectorManagerSection
+        case .oscAndMCP:
+            oscAndMCPSection
+        }
+    }
+
+    private var quickStartSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader(
+                title: "Démarrage rapide",
+                subtitle: "Découvrir, nommer et piloter un parc de vidéoprojecteurs PJLink en quatre étapes."
+            )
+            numberedStep(
+                number: "1",
+                title: "Découvrir le réseau (:4352) ou lancer le plateau simulé",
+                body: "Choisissez l'interface réseau en haut à gauche puis cliquez sur « Découvrir » (⇧⌘D) : SimplePJ sonde un sous-réseau /24 complet en ~1,5 s. Hors plateau, cliquez sur « Simuler un plateau (4 VP) » pour lancer 4 serveurs PJLink Classe 2 réels sur 127.0.0.1."
+            )
+            numberedStep(
+                number: "2",
+                title: "Déverrouiller les mots de passe d'usine en un clic",
+                body: "Si un projecteur répond PJLINK 1 (mot de passe requis), cliquez sur « Tester mots de passe » : SimplePJ teste automatiquement les mots de passe d'usine courants (panasonic, admin, pjlink, JBMIA, 0000…)."
+            )
+            numberedStep(
+                number: "3",
+                title: "Basculer entre la vue Plateau (⌘1) et la vue Liste (⌘2)",
+                body: "La vue Plateau affiche de grandes cartes de régie ; la vue Liste embarque des commutateurs directs [ON | OFF], [OUV | NOIR], Mute Audio, un menu déroulant d'entrée vidéo et un popover de diagnostic Lampe / ERST sur chaque ligne."
+            )
+            numberedStep(
+                number: "4",
+                title: "Enregistrer (.simplepj) ou exporter la fiche technique (⌘E)",
+                body: "Sauvegardez votre parc en .simplepj (⌘S) ou exportez une fiche technique complète (TXT, CSV, JSON, IP:port) incluant modèles, numéros de série, entrées et heures de lampe."
+            )
+            calloutBox(
+                icon: "eye.slash.fill",
+                tint: Theme.accent,
+                title: "Volet optique (Noir plateau) vs Extinction",
+                text: "En spectacle, utilisez toujours « VOLET FERMÉ · NOIR » (AVMT 31, raccourci ⌘B) pour couper le faisceau instantanément. L'extinction (« Veille », POWR 0) demande une confirmation de sécurité (maintenez ⌥ pour contourner)."
+            )
+        }
+    }
+
+    private var stageAndGroupsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader(
+                title: "Conduite de plateau & Groupes #tags",
+                subtitle: "Piloter un projecteur, une sélection multiple ou un groupe de plateau d'un seul geste."
+            )
+            bulletList([
+                ("Groupes automatiques par #tags", "Ajoutez des #tags directement dans le nom d'un projecteur (ex. « Face Cour #face #cour », « Cyclo #cyclo »). Vos groupes apparaissent automatiquement dans la barre latérale gauche : un clic filtre la vue, et un clic droit permet d'ouvrir/fermer les volets de tout le groupe."),
+                ("Barre maîtresse de plateau", "Les boutons « NOIR · Fermer volets » (⌘B), « Ouvrir volets » (⇧⌘B), « Allumer », « Veille », « Gel » et « Entrée… » agissent sur la sélection active, le groupe filtré ou tout le parc."),
+                ("Wake-on-LAN & Interface Web", "SimplePJ relève automatiquement l'adresse MAC de chaque projecteur dans la table ARP macOS pour permettre le réveil réseau (Wake-on-LAN, ⇧⌘W) et l'ouverture directe de l'interface HTTP du projecteur.")
+            ])
+        }
+    }
+
+    private var pjlinkProtocolSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader(
+                title: "Protocole PJLink Classe 1 & Classe 2",
+                subtitle: "Commandes normalisées JBMIA sur TCP/UDP 4352 et console temps réel (⌥⌘L)."
+            )
+            bulletList([
+                ("Classe 1 (%1) — Alimentation, Volet, Entrées, Lampes, ERST", "Support complet de POWR (0/1/2/3), AVMT (10/11 vidéo, 20/21 audio, 30/31 volet complet), INPT, INST, LAMP (multi-lampes/laser), ERST (6 capteurs : Ventilateur, Lampe, Température, Capot, Filtre, Autre), NAME, INF1, INF2, INFO, CLSS."),
+                ("Classe 2 (%2) — Gel, Noms d'entrées, Résolutions, Série", "Support de %2FREZ (gel d'image), %2INNM ?<code> (vrais noms des entrées : HDMI 1, HDBaseT, SDI), %2IRES / %2RRES (résolution entrante et native), %2SNUM (numéro de série), %2SVER (firmware), %2FILT (heures filtre), %2RLMP / %2RFIL."),
+                ("Authentification MD5 & Reconnexion automatique", "Gestion native du défi MD5 (PJLINK 1 <salt>) et reconnexion TCP transparente pour les projecteurs qui ferment la socket après chaque commande.")
+            ])
+        }
+    }
+
+    private var projectorManagerSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader(
+                title: "Migration & Compatibilité ProjectorManager",
+                subtitle: "Retrouvez vos habitudes et vos scripts de ProjectorManager (SIGMASIX)."
+            )
+            bulletList([
+                ("Import en 1 clic de vos projecteurs enregistrés (⇧⌘I)", "SimplePJ lit automatiquement les préférences de ProjectorManager (ch.sigmasix.ProjectorManager) et importe toutes vos adresses IP et mots de passe d'un seul clic."),
+                ("Contrôles directs en ligne en vue Liste (⌘2)", "Retrouvez l'efficacité de la vue liste avec les commutateurs [ON | OFF], [OUV | NOIR], Mute Audio, le menu déroulant d'entrée vidéo et le popover Lampe / ERST directement sur chaque ligne."),
+                ("Dictionnaire AppleScript 100 % compatible", "Les commandes AppleScript PowerOn, PowerOff, AvMute, AvUnMute et Inpt {code, index} fonctionnent à l'identique dans QLab ou éditeur de scripts en ciblant \"SimplePJ\".")
+            ])
+        }
+    }
+
+    private var oscAndMCPSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader(
+                title: "OSC, API HTTP & Serveur MCP",
+                subtitle: "Interfaçage temps réel avec OSCScore, Montage, eMotion, QLab et agents IA."
+            )
+            bulletList([
+                ("Serveur OSC UDP (:9130 par défaut)", "/simplepj/all/shutter <0|1>, /simplepj/all/power <0|1>, /simplepj/all/freeze <0|1>, /simplepj/all/input <code|nom>, /simplepj/group/<tag>/shutter <0|1>, /simplepj/pj/<index|ip|nom>/shutter <0|1>, /simplepj/refresh."),
+                ("API HTTP JSON locale (127.0.0.1:17930/v1)", "Expose GET /v1/state, GET /v1/projectors, GET /v1/help, GET /v1/snapshot.png, POST /v1/shutter, POST /v1/power, POST /v1/input, POST /v1/freeze, POST /v1/discover, POST /v1/projectors, POST /v1/command."),
+                ("Serveur MCP embarqué (simplepj-mcp)", "Le binaire compagnon /Applications/SimplePJ.app/Contents/MacOS/simplepj-mcp expose 11 outils MCP (simplepj_state, simplepj_projectors, simplepj_shutter, simplepj_power, simplepj_input, simplepj_freeze, simplepj_discover, simplepj_add_projector, simplepj_command, simplepj_snapshot) sur stdio.")
+            ])
+        }
+    }
+
+    private func sectionHeader(title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Theme.text.swiftUI)
+            Text(subtitle)
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textDim.swiftUI)
+            Rectangle().fill(Theme.separator.swiftUI).frame(height: 1).padding(.top, 6)
+        }
+    }
+
+    private func numberedStep(number: String, title: String, body: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(number)
+                .font(.system(size: 11, weight: .bold).monospacedDigit())
+                .foregroundStyle(Theme.accent.swiftUI)
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(Theme.accent.swiftUI.opacity(0.14)))
+                .overlay(Circle().strokeBorder(Theme.accent.swiftUI.opacity(0.35), lineWidth: 1))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(Theme.text.swiftUI)
+                Text(body)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Theme.textDim.swiftUI)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineSpacing(2)
+            }
+        }
+    }
+
+    private func bulletList(_ items: [(String, String)]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(items, id: \.0) { title, detail in
+                HStack(alignment: .top, spacing: 10) {
+                    Circle().fill(Theme.accent.swiftUI).frame(width: 5, height: 5).padding(.top, 6)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.text.swiftUI)
+                        Text(detail)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(Theme.textDim.swiftUI)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .lineSpacing(1.5)
+                    }
+                }
+            }
+        }
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 7).fill(Color.white.opacity(0.035)))
+        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.lane.swiftUI))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.white.opacity(0.06), lineWidth: 1))
+    }
+
+    private func calloutBox(icon: String, tint: NSColor, title: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(tint.swiftUI)
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(Theme.text.swiftUI)
+                Text(text)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.textDim.swiftUI)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 8).fill(tint.swiftUI.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(tint.swiftUI.opacity(0.25), lineWidth: 1))
     }
 }
 
@@ -608,6 +874,8 @@ struct HelpManualSheet: View {
 
 struct PreferencesView: View {
     @Bindable var model: AppModel
+    @State private var oscPortText: String = ""
+    @State private var httpPortText: String = ""
 
     var body: some View {
         @Bindable var fleet = model.fleet
@@ -623,6 +891,38 @@ struct PreferencesView: View {
                 .frame(width: 170)
             }
             Divider().overlay(Theme.separator.swiftUI)
+            SectionHeader("Ports OSC, API HTTP & MCP")
+            FieldRow("Port OSC entrant (UDP)", width: 170) {
+                HStack(spacing: 6) {
+                    TextField("9130", text: $oscPortText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(Theme.text.swiftUI)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .frame(width: 80)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.05)))
+                        .onSubmit { applyPorts() }
+                    TextButton(title: "Appliquer", compact: true) { applyPorts() }
+                }
+            }
+            FieldRow("Port HTTP / MCP (127.0.0.1)", width: 170) {
+                HStack(spacing: 6) {
+                    TextField("17930", text: $httpPortText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(Theme.text.swiftUI)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .frame(width: 80)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.05)))
+                        .onSubmit { applyPorts() }
+                    Text(verbatim: "/v1")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(Theme.textDim.swiftUI)
+                }
+            }
+            Divider().overlay(Theme.separator.swiftUI)
             SectionHeader("Affichage")
             Toggle("Barre latérale des groupes", isOn: $model.showSidebar)
                 .font(.system(size: 11.5)).foregroundStyle(Theme.text.swiftUI)
@@ -632,16 +932,30 @@ struct PreferencesView: View {
                 .font(.system(size: 11.5)).foregroundStyle(Theme.text.swiftUI)
             Divider().overlay(Theme.separator.swiftUI)
             SectionHeader("Réseau & Confidentialité")
-            Text("SimplePJ communique uniquement en local avec vos vidéoprojecteurs (TCP/UDP 4352) et vos logiciels de régie (OSC :9130, HTTP 127.0.0.1:17930). Aucune télémétrie, aucune connexion externe.")
+            Text("SimplePJ communique uniquement en local avec vos vidéoprojecteurs (TCP/UDP 4352), vos logiciels de régie (OSC :9130, HTTP 127.0.0.1:17930) et le serveur MCP local (simplepj-mcp). Aucune télémétrie, aucune connexion externe.")
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.textDim.swiftUI)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer()
         }
         .padding(20)
-        .frame(width: 440, height: 320)
+        .frame(width: 460, height: 390)
         .background(Theme.panel.swiftUI)
         .preferredColorScheme(.dark)
+        .onAppear {
+            oscPortText = "\(model.fleet.oscServer?.port ?? kSimplePJDefaultOSCInPort)"
+            httpPortText = "\(model.fleet.httpPort)"
+        }
+    }
+
+    private func applyPorts() {
+        if let oscP = UInt16(oscPortText.trimmingCharacters(in: .whitespaces)), oscP > 0 {
+            model.fleet.startOSCServer(port: oscP)
+        }
+        if let httpP = UInt16(httpPortText.trimmingCharacters(in: .whitespaces)), httpP > 0 {
+            model.fleet.startHTTPServer(port: httpP)
+        }
+        model.flash("Ports OSC (:\(oscPortText)) et HTTP/MCP (:\(httpPortText)) mis à jour")
     }
 }
 
