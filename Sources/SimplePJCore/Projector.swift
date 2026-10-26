@@ -62,6 +62,7 @@ public struct Projector: Identifiable, Hashable, Codable, Sendable {
     public var latencyMs: Double?
     public var lastSeen: Date?
     public var lastError: String?
+    public var testPattern: OptomaTestPattern?
 
     public init(
         id: UUID = UUID(),
@@ -95,7 +96,8 @@ public struct Projector: Identifiable, Hashable, Codable, Sendable {
         errors: PJLinkErrorStatus = PJLinkErrorStatus(),
         latencyMs: Double? = nil,
         lastSeen: Date? = nil,
-        lastError: String? = nil
+        lastError: String? = nil,
+        testPattern: OptomaTestPattern? = nil
     ) {
         self.id = id
         self.ip = ip.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -129,6 +131,7 @@ public struct Projector: Identifiable, Hashable, Codable, Sendable {
         self.latencyMs = latencyMs
         self.lastSeen = lastSeen
         self.lastError = lastError
+        self.testPattern = testPattern
     }
 
     // MARK: - Computed Stage Presentation
@@ -212,6 +215,41 @@ public struct Projector: Identifiable, Hashable, Codable, Sendable {
     public var lampSummary: String {
         guard !lamps.isEmpty else { return "—" }
         return lamps.map { "\($0.hours) h" }.joined(separator: " · ")
+    }
+
+    /// Active Optoma test pattern (defaults to `.off`).
+    public var activeTestPattern: OptomaTestPattern {
+        testPattern ?? .off
+    }
+
+    /// True if manufacturer or model indicates an Optoma ProScene (ZU920ST / ZU series) projector.
+    public var isOptoma: Bool {
+        if let mfg = manufacturer?.lowercased(), mfg.contains("optoma") { return true }
+        if let mdl = modelName?.lowercased(), mdl.contains("zu") || mdl.contains("optoma") { return true }
+        if let lbl = label?.lowercased(), lbl.contains("optoma") || lbl.contains("zu920") { return true }
+        return false
+    }
+
+    /// True if manufacturer or model indicates an Epson Pro L / EB-PU (EB-L1755U, EB-PU2010B…) projector.
+    public var isEpson: Bool {
+        if let mfg = manufacturer?.lowercased(), mfg.contains("epson") || mfg.contains("seiko") { return true }
+        if let mdl = modelName?.lowercased(), mdl.contains("eb-l") || mdl.contains("eb-pu") || mdl.contains("elpl") || mdl.contains("epson") { return true }
+        if let lbl = label?.lowercased(), lbl.contains("epson") || lbl.contains("l1755") { return true }
+        if let notes = notes?.lowercased(), notes.contains("elplu03") || notes.contains("elpl") { return true }
+        return false
+    }
+
+    /// True if manufacturer or model indicates a high-end Panasonic (PT-RZ, PT-RQ, PT-MZ, PT-RCQ, PT-DZ…) projector.
+    public var isPanasonic: Bool {
+        if let mfg = manufacturer?.lowercased(), mfg.contains("panasonic") || mfg.contains("matsushita") { return true }
+        if let mdl = modelName?.lowercased(), mdl.hasPrefix("pt-") || mdl.contains("panasonic") { return true }
+        if let lbl = label?.lowercased(), lbl.contains("panasonic") || lbl.contains("pt-rz") || lbl.contains("pt-rq") { return true }
+        return false
+    }
+
+    /// True if the projector supports direct network control of internal test patterns and motorized optics (Panasonic, Epson, or Optoma).
+    public var supportsExtendedOptics: Bool {
+        isPanasonic || isEpson || isOptoma
     }
 
     // MARK: - Applying PJLink Replies

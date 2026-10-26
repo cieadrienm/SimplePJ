@@ -19,3 +19,7 @@
 ## 5. Simulateur PJLink Classe 2 intégré (`PJLinkDemoRig`)
 - **Contexte** : Préparer une conduite OSC (`OSCScore`, `Montage`, `eMotion`) au bureau sans vidéoprojecteurs physiques nécessite de vrais serveurs TCP PJLink.
 - **Décision** : `SimplePJCore` embarque `PJLinkSimulatedServer`, un serveur TCP PJLink Classe 2 complet sur `127.0.0.1` accessible en un clic (« Simuler un plateau (4 VP) ») ainsi que dans `--self-test`.
+
+## 6. Pilotage unifié des Mires & Optiques Motorisées (Panasonic, Epson, Optoma)
+- **Contexte** : Le standard PJLink (`:4352`) ne couvre ni l'affichage de la grille de calage interne ni les moteurs optiques (Lens Shift H/V, Focus, Zoom, Distorsion). Or sur le plateau, caler des **Panasonic PT-RZ/RQ**, des **Epson EB-L1755U (optiques ELPLU03/03S)** ou des **Optoma ZU920ST** depuis la régie fait gagner un temps considérable.
+- **Décision** : `OptomaClient.swift` détecte automatiquement le fabricant via `INF1`/`INF2` et route les commandes de mire (`⌘G`) et de Lens Shift (`↑ ↓ ← →`) vers le protocole natif temps réel du projecteur (`NTCONTROL :1024` pour Panasonic, `ESC/VP.net :3629` pour Epson, `RS232-over-IP :23` pour Optoma) avec bascule automatique sur leurs CGI HTTP `:80` respectifs (`/cgi-bin/proj_ctl.cgi`, `/cgi-bin/directsend`, `/tgi/control.tgi`).

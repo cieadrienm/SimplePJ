@@ -66,6 +66,31 @@ public let simplePJToolDefinitions: [[String: Any]] = [
         ],
     ],
     [
+        "name": "simplepj_pattern",
+        "description": "Displays or hides the internal test pattern / alignment grid on Optoma ProScene (ZU920ST) via TCP :23 (~00195) / HTTP :80 and Epson Pro L (EB-L1755U) via ESC/VP.net :3629 (POPPAT / KEY 90) / HTTP /cgi-bin/directsend.",
+        "inputSchema": [
+            "type": "object",
+            "properties": [
+                "target": ["type": "string", "description": "'all', '#tag', 1-based index, IP, or projector name"],
+                "pattern": ["type": "string", "enum": ["off", "white-grid", "green-grid", "magenta-grid", "white", "black", "bars"], "description": "Test pattern to display ('white-grid' for alignment grid, 'off' to hide)"],
+            ],
+            "required": ["pattern"],
+        ],
+    ],
+    [
+        "name": "simplepj_lens",
+        "description": "Controls the motorized optical block (Lens Shift Up/Down/Left/Right, Focus +/-, Zoom +/-, Distortion +/- for ELPLU03/03S, Center, Unlock/Lock) on Optoma ProScene (ZU920ST) and Epson Pro L (EB-L1755U + ELPLU03/ELPLU03S).",
+        "inputSchema": [
+            "type": "object",
+            "properties": [
+                "target": ["type": "string", "description": "'all', '#tag', 1-based index, IP, or projector name"],
+                "action": ["type": "string", "enum": ["up", "down", "left", "right", "focus+", "focus-", "zoom+", "zoom-", "distortion+", "distortion-", "center", "unlock", "lock"], "description": "Motorized lens action"],
+                "steps": ["type": "integer", "description": "Number of motor step impulses (1 to 10, default 1)"],
+            ],
+            "required": ["action"],
+        ],
+    ],
+    [
         "name": "simplepj_discover",
         "description": "Scans a CIDR/IP range for PJLink projectors on TCP/UDP 4352, toggles the 4-projector simulated stage rig, or imports saved projectors from SIGMASIX ProjectorManager.",
         "inputSchema": [

@@ -224,4 +224,86 @@ struct SimplePJCoreTests {
         #expect(parsedGitHub.sha256 == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
         #expect(SimpleUpdater.sha256Hex(of: Data()) == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
     }
+
+    @Test("Optoma ProScene ZU920ST test pattern and motorized lens control")
+    func optomaProSceneTestPatternAndLensControl() throws {
+        #expect(OptomaTestPattern.parse("white-grid") == .whiteGrid)
+        #expect(OptomaTestPattern.parse("green-grid") == .greenGrid)
+        #expect(OptomaTestPattern.parse("magenta-grid") == .magentaGrid)
+        #expect(OptomaTestPattern.parse("off") == .off)
+        #expect(OptomaTestPattern.whiteGrid.rs232Command == "~00195 1")
+        #expect(OptomaLensAction.parse("up") == .shiftUp)
+        #expect(OptomaLensAction.parse("focus+") == .focusPlus)
+        #expect(OptomaLensAction.parse("zoom-") == .zoomMinus)
+
+        let sim = PJLinkSimulatedServer(
+            config: .init(name: "VP-ZU920ST", manufacturer: "Optoma", modelName: "ZU920ST")
+        )
+        let port = try sim.start()
+        defer { sim.stop() }
+
+        let pj = Projector(
+            ip: "127.0.0.1",
+            port: port,
+            isSimulated: true,
+            manufacturer: "Optoma",
+            modelName: "ZU920ST"
+        )
+        #expect(pj.isOptoma)
+
+        let patRes = OptomaClient.setTestPattern(.whiteGrid, on: pj)
+        #expect(patRes.ok)
+        #expect(!patRes.exchange.isError)
+
+        let lensRes = OptomaClient.triggerLens(.shiftUp, steps: 2, on: pj)
+        #expect(lensRes.ok)
+        #expect(!lensRes.exchange.isError)
+
+        // Epson EB-L1755U + ELPLU03S
+        let epsonPJ = Projector(
+            ip: "127.0.0.1",
+            port: port,
+            notes: "Optique courte ELPLU03S (0.65–0.78:1)",
+            isSimulated: true,
+            manufacturer: "EPSON",
+            modelName: "EB-L1755U"
+        )
+        #expect(epsonPJ.isEpson)
+        #expect(epsonPJ.supportsExtendedOptics)
+        #expect(OptomaLensAction.shiftUp.epsonESCVPCommands == ["LENS INC"])
+        #expect(OptomaLensAction.shiftLeft.epsonESCVPCommands == ["HLENS DEC"])
+        #expect(OptomaLensAction.distortionPlus.epsonESCVPCommands == ["DISTORTION INC"])
+        #expect(OptomaLensAction.lensCenter.epsonESCVPCommands == ["LENS 512", "HLENS 512"])
+
+        let epsonGridRes = OptomaClient.setTestPattern(.whiteGrid, on: epsonPJ)
+        #expect(epsonGridRes.ok)
+        #expect(epsonGridRes.exchange.tx.contains("EPSON POPPAT 01"))
+
+        let epsonDistRes = OptomaClient.triggerLens(.distortionPlus, steps: 2, on: epsonPJ)
+        #expect(epsonDistRes.ok)
+        #expect(epsonDistRes.exchange.tx.contains("EPSON DISTORTION INC"))
+
+        // Panasonic PT-RZ990 / PT-RQ22K (NTCONTROL :1024)
+        let panaPJ = Projector(
+            ip: "127.0.0.1",
+            port: port,
+            isSimulated: true,
+            manufacturer: "Panasonic",
+            modelName: "PT-RZ990"
+        )
+        #expect(panaPJ.isPanasonic)
+        #expect(panaPJ.supportsExtendedOptics)
+        #expect(OptomaTestPattern.whiteGrid.panasonicNTCommand == "00OTS:07")
+        #expect(OptomaLensAction.shiftUp.panasonicNTCommand(fast: false) == "00VXX:LNSI2=+00001")
+        #expect(OptomaLensAction.shiftUp.panasonicNTCommand(fast: true) == "00VXX:LNSI2=+00010")
+        #expect(OptomaLensAction.lensCenter.panasonicNTCommand() == "00VXX:LNSI1=+00001")
+
+        let panaGridRes = OptomaClient.setTestPattern(.whiteGrid, on: panaPJ)
+        #expect(panaGridRes.ok)
+        #expect(panaGridRes.exchange.tx.contains("PANA 00OTS:07"))
+
+        let panaShiftRes = OptomaClient.triggerLens(.shiftRight, steps: 3, on: panaPJ)
+        #expect(panaShiftRes.ok)
+        #expect(panaShiftRes.exchange.tx.contains("PANA 00VXX:LNSI3=+00010"))
+    }
 }

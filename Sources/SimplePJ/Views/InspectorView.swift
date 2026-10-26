@@ -5,6 +5,7 @@ struct InspectorView: View {
     @Bindable var model: AppModel
     @FocusState private var labelFocused: Bool
     @State private var rawCommandInput: String = "%1POWR ?"
+    @State private var forceShowOptomaPanel: Bool = false
 
     var body: some View {
         Group {
@@ -31,6 +32,8 @@ struct InspectorView: View {
                 identityEditSection(pj)
                 separator
                 shutterAndPowerSection(pj, online: online)
+                separator
+                optomaOpticsAndGridSection(pj, online: online)
                 separator
                 inputsSection(pj, online: online)
                 separator
@@ -221,6 +224,268 @@ struct InspectorView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Optoma ProScene (ZU920ST) & Epson Pro L (EB-L1755U + ELPLU03/03S) Test Pattern & Motorized Optics
+
+    private func optomaOpticsAndGridSection(_ pj: Projector, online: Bool) -> some View {
+        let isExpanded = pj.supportsExtendedOptics || forceShowOptomaPanel || pj.activeTestPattern != .off
+        let headerTitle: String = {
+            if pj.isPanasonic {
+                return L("Optique & Mire (Panasonic PT-RZ / PT-RQ)", "Optics & Test Pattern (Panasonic PT-RZ / PT-RQ)")
+            } else if pj.isEpson {
+                return L("Optique & Mire (Epson EB-L / ELPLU03)", "Optics & Test Pattern (Epson EB-L / ELPLU03)")
+            } else {
+                return L("Optique & Mire (Optoma ProScene)", "Optics & Test Pattern (Optoma)")
+            }
+        }()
+        return VStack(alignment: .leading, spacing: 9) {
+            SectionHeader(headerTitle) {
+                HStack(spacing: 5) {
+                    if pj.isPanasonic {
+                        Chip(text: "NTCONTROL :1024", tint: Theme.alive.swiftUI)
+                    } else if pj.isEpson {
+                        Chip(text: "ESC/VP.net · ELPLU03", tint: Theme.tcp.swiftUI)
+                    } else if pj.isOptoma {
+                        Chip(text: "ZU PROSCENE", tint: Theme.accent.swiftUI)
+                    }
+                    Button {
+                        forceShowOptomaPanel.toggle()
+                    } label: {
+                        Text(isExpanded ? L("Masquer", "Hide") : L("Afficher ▾", "Show ▾"))
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(Theme.textDim.swiftUI)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if isExpanded {
+                // 1. Test Pattern / Grid (Panasonic 00OTS:07 / Epson POPPAT / Optoma ~00195)
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text(
+                            pj.isPanasonic
+                                ? L("Mire interne / Grille (00OTS:07 / proj_ctl.cgi)", "Internal Test Pattern / Grid (00OTS:07 / proj_ctl.cgi)")
+                                : (pj.isEpson
+                                    ? L("Mire interne / Grille (POPPAT / KEY 90)", "Internal Test Pattern / Grid (POPPAT / KEY 90)")
+                                    : L("Mire interne / Grille (~00195)", "Internal Test Pattern / Grid (~00195)"))
+                        )
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(Theme.textDim.swiftUI)
+                        Spacer()
+                        if pj.activeTestPattern != .off {
+                            Text(pj.activeTestPattern.label)
+                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(Theme.accent.swiftUI)
+                        }
+                    }
+
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 5),
+                        GridItem(.flexible(), spacing: 5),
+                        GridItem(.flexible(), spacing: 5),
+                    ], spacing: 5) {
+                        ForEach([
+                            OptomaTestPattern.off,
+                            .whiteGrid,
+                            .greenGrid,
+                            .magentaGrid,
+                            .white,
+                            .colorBars,
+                        ]) { pat in
+                            let active = pj.activeTestPattern == pat
+                            let tint: Color = {
+                                switch pat {
+                                case .off: return Theme.textDim.swiftUI
+                                case .whiteGrid, .white: return Theme.text.swiftUI
+                                case .greenGrid: return Theme.alive.swiftUI
+                                case .magentaGrid: return Theme.osc.swiftUI
+                                case .black: return Theme.textDim.swiftUI
+                                case .colorBars: return Theme.accent.swiftUI
+                                }
+                            }()
+                            Button {
+                                model.fleet.setTestPattern(pat, on: [pj])
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: pat.symbol)
+                                        .font(.system(size: 10, weight: .semibold))
+                                    Text(pat.shortLabel)
+                                        .font(.system(size: 10.5, weight: .semibold))
+                                        .lineLimit(1)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 5)
+                                .foregroundStyle(active ? Theme.background.swiftUI : tint)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .fill(active ? tint : Color.white.opacity(0.05))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 5)
+                                                .strokeBorder(active ? tint : Color.white.opacity(0.08), lineWidth: 1)
+                                        )
+                                )
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .help(
+                                pj.isPanasonic
+                                    ? "\(pat.label) · NTCONTROL:1024 \(pat.panasonicNTCommand) / HTTP /cgi-bin/proj_ctl.cgi"
+                                    : (pj.isEpson
+                                        ? "\(pat.label) · ESC/VP.net:3629 \(pat.epsonESCVPCommands.first ?? "") / HTTP /cgi-bin/directsend"
+                                        : "\(pat.label) · TCP:23 \(pat.rs232Command) / HTTP /tgi/control.tgi")
+                            )
+                        }
+                    }
+                }
+
+                // 2. Motorized Lens Shift + Focus + Zoom (+ Distortion for Epson ELPLU03/03S)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(
+                            pj.isPanasonic
+                                ? L("Optique motorisée (VXX:LNSI2..5 / Home LNSI1)", "Motorized Lens (VXX:LNSI2..5 / Home LNSI1)")
+                                : (pj.isEpson
+                                    ? L("Optique motorisée ELPLU03 / 03S (LENS / HLENS / FOCUS / ZOOM)", "Motorized Lens ELPLU03 / 03S (LENS / HLENS / FOCUS / ZOOM)")
+                                    : L("Bloc optique motorisé (Shift / Focus / Zoom)", "Motorized Lens (Shift / Focus / Zoom)"))
+                        )
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(Theme.textDim.swiftUI)
+                        Spacer()
+                        HStack(spacing: 3) {
+                            ForEach([1, 3, 6], id: \.self) { step in
+                                let sel = model.lensStepMultiplier == step
+                                Button {
+                                    model.lensStepMultiplier = step
+                                } label: {
+                                    Text("×\(step)")
+                                        .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 2)
+                                        .foregroundStyle(sel ? Theme.background.swiftUI : Theme.textDim.swiftUI)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(sel ? Theme.accent.swiftUI : Color.white.opacity(0.05))
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .help(L("Nombre d'impulsions moteur par clic ou flèche clavier (×\(step))", "Motor step impulses per click or arrow key (×\(step))"))
+                            }
+                        }
+                    }
+
+                    HStack(alignment: .center, spacing: 10) {
+                        // Directional D-Pad for Lens Shift H/V
+                        VStack(spacing: 3) {
+                            VStack(spacing: 4) {
+                                lensPadButton(symbol: "chevron.up", action: .shiftUp, pj: pj)
+                                HStack(spacing: 4) {
+                                    lensPadButton(symbol: "chevron.left", action: .shiftLeft, pj: pj)
+                                    lensPadButton(symbol: "scope", action: .lensCenter, pj: pj, tint: Theme.tcp.swiftUI)
+                                    lensPadButton(symbol: "chevron.right", action: .shiftRight, pj: pj)
+                                }
+                                lensPadButton(symbol: "chevron.down", action: .shiftDown, pj: pj)
+                            }
+                            .padding(6)
+                            .background(RoundedRectangle(cornerRadius: 7).fill(Color.black.opacity(0.22)))
+
+                            Text(L("↑↓←→ Clavier (⇧×3)", "↑↓←→ Keys (⇧×3)"))
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundStyle(Theme.textFaint.swiftUI)
+                        }
+
+                        // Focus / Zoom / Distortion / Lens Lock column
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack(spacing: 5) {
+                                Text("Focus")
+                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Theme.textDim.swiftUI)
+                                    .frame(width: 44, alignment: .leading)
+                                TextButton(title: "−", symbol: "minus.magnifyingglass", compact: true) {
+                                    model.fleet.triggerLens(.focusMinus, steps: model.lensStepMultiplier, on: [pj])
+                                }
+                                TextButton(title: "+", symbol: "plus.magnifyingglass", compact: true) {
+                                    model.fleet.triggerLens(.focusPlus, steps: model.lensStepMultiplier, on: [pj])
+                                }
+                            }
+                            HStack(spacing: 5) {
+                                Text("Zoom")
+                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Theme.textDim.swiftUI)
+                                    .frame(width: 44, alignment: .leading)
+                                TextButton(title: "−", symbol: "arrow.down.right.and.arrow.up.left", compact: true) {
+                                    model.fleet.triggerLens(.zoomMinus, steps: model.lensStepMultiplier, on: [pj])
+                                }
+                                TextButton(title: "+", symbol: "arrow.up.left.and.arrow.down.right", compact: true) {
+                                    model.fleet.triggerLens(.zoomPlus, steps: model.lensStepMultiplier, on: [pj])
+                                }
+                            }
+                            if pj.isEpson {
+                                HStack(spacing: 5) {
+                                    Text(L("Distors.", "Distort."))
+                                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                        .foregroundStyle(Theme.textDim.swiftUI)
+                                        .frame(width: 44, alignment: .leading)
+                                    TextButton(title: "−", symbol: "trapezoid.and.line.horizontal", compact: true) {
+                                        model.fleet.triggerLens(.distortionMinus, steps: model.lensStepMultiplier, on: [pj])
+                                    }
+                                    TextButton(title: "+", symbol: "trapezoid.and.line.vertical", compact: true) {
+                                        model.fleet.triggerLens(.distortionPlus, steps: model.lensStepMultiplier, on: [pj])
+                                    }
+                                }
+                            }
+                            HStack(spacing: 5) {
+                                TextButton(
+                                    title: L("Déverr. optique", "Unlock Lens"),
+                                    symbol: "lock.open.fill",
+                                    compact: true
+                                ) {
+                                    model.fleet.triggerLens(.lensUnlock, steps: 1, on: [pj])
+                                }
+                                TextButton(
+                                    title: L("Verr.", "Lock"),
+                                    symbol: "lock.fill",
+                                    compact: true
+                                ) {
+                                    model.fleet.triggerLens(.lensLock, steps: 1, on: [pj])
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func lensPadButton(
+        symbol: String,
+        action: OptomaLensAction,
+        pj: Projector,
+        tint: Color = Theme.text.swiftUI
+    ) -> some View {
+        let isActive = model.activeLensAction == action
+        return Button {
+            let fast = NSEvent.modifierFlags.contains(.option) || NSEvent.modifierFlags.contains(.shift)
+            let steps = fast ? max(3, model.lensStepMultiplier * 3) : model.lensStepMultiplier
+            model.fleet.triggerLens(action, steps: steps, on: [pj])
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(isActive ? Theme.background.swiftUI : tint)
+                .frame(width: 28, height: 25)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(isActive ? Theme.accent.swiftUI : Color.white.opacity(0.07))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .strokeBorder(isActive ? Theme.accent.swiftUI : Color.white.opacity(0.11), lineWidth: 1)
+                        )
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("\(action.label) (\(pj.isPanasonic ? action.panasonicNTCommand() : (pj.isEpson ? (action.epsonESCVPCommands.first ?? "") : (action.rs232Commands.first ?? "")))) · ↑↓←→ ou ⇧/⌥ = pas rapide")
     }
 
     private func inputsSection(_ pj: Projector, online: Bool) -> some View {

@@ -10,6 +10,13 @@ Contrôleur de vidéoprojecteurs **PJLink (Classe 1 & Classe 2)** natif, ultra-l
   - **Entrées vidéo intelligentes (`INPT`, `INST`, `INNM`)** : détection automatique de la liste des entrées disponibles sur chaque projecteur et lecture des noms réels des connecteurs en Classe 2 (*HDMI 1*, *12G-SDI*, *DIGITAL LINK*, *HDBaseT*…).
   - **Gel d'image (`FREZ`) & Résolutions (`IRES` / `RRES`)** : gel d'image instantané et affichage de la résolution du signal entrant face à la matrice native.
   - **Santé & Maintenance (`ERST`, `LAMP`, `FILT`, `SNUM`, `SVER`, `RLMP`, `RFIL`)** : surveillance des 6 capteurs matériels (*Ventilateur*, *Lampe/Laser*, *Température*, *Capot*, *Filtre*, *Autre*), heures de chaque source lumineuse et du filtre, numéro de série, firmware et références de consommables.
+- **Mires de calage & Optique motorisée (Panasonic, Epson, Optoma)** :
+  - **Panasonic PT-RZ / PT-RQ / PT-MZ (`PT-RZ990`, `PT-RQ22K`…)** : pilotage via `NTCONTROL` TCP `:1024` (`00OTS:07` grille, `00VXX:LNSI2..5` Lens Shift / Focus / Zoom / Home `LNSI1`, avec authentification MD5 `NTCONTROL 1`) et bascule HTTP `:80` (`/cgi-bin/proj_ctl.cgi`).
+  - **Epson Pro L / EB-PU (`EB-L1755U` + optiques courtes `ELPLU03` / `ELPLU03S`)** : pilotage via `ESC/VP.net` TCP `:3629` (`POPPAT` / `KEY 90` grille, `LENS` / `HLENS` / `FOCUS` / `ZOOM` / `DISTORTION` / `LENS 512` centrage) et bascule HTTP `:80` (`/cgi-bin/directsend`).
+  - **Optoma ProScene (`ZU920ST` / série ZU)** : pilotage via TCP `:23` (`~00195` grilles blanche/verte/magenta, `~0084` & `~00140` Lens Shift / Focus / Zoom / Lens Lock) et bascule HTTP `:80` (`/tgi/control.tgi`).
+  - **Raccourcis clavier plateau** : **`⌘G`** pour afficher/masquer la grille de calage, et **flèches du clavier `↑` `↓` `←` `→`** (`⇧ + flèche` pour pas rapide `×3`) pour régler le Lens Shift du projecteur sélectionné.
+- **Bilingue Français / English & Mises à jour automatiques (`SimpleUpdater`)** :
+  - Interface intégralement bilingue FR/EN (bascule à chaud dans `⌘,`) et système de mise à jour léger sans dépendance externe (`SimpleUpdater` via GitHub Releases + vérification SHA-256 & signature Apple).
 - **Découverte éclair & Déverrouillage malin** :
   - Scan parallèle du port TCP `4352` sur tout un `/24` en ~1,5 s + broadcast UDP `%2SRCH` (Classe 2) + association automatique de l'adresse MAC depuis la table ARP (pour le **Wake-on-LAN** et le suivi DHCP).
   - **Déverrouillage automatique** : sur un projecteur protégé par `PJLINK 1` (`ERRA`), teste en un clic les mots de passe d'usine courants (*panasonic*, *admin*, *pjlink*, *JBMIA*, *0000*, *1234*, *EPSONWEB*…).

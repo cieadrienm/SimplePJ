@@ -115,6 +115,31 @@ struct SimplePJApp: App {
             }
             .disabled(model.fleet.activeTargets.isEmpty)
 
+            Menu(L("Mire & Optique (Flèches ↑ ↓ ← →)", "Test Pattern & Lens (Arrows ↑ ↓ ← →)")) {
+                Button(L("Afficher / Masquer la grille de calage", "Toggle Alignment Grid")) {
+                    let anyGrid = model.fleet.activeTargets.contains { $0.activeTestPattern != .off }
+                    model.fleet.setTestPattern(anyGrid ? .off : .whiteGrid)
+                }
+                .keyboardShortcut("g", modifiers: [.command])
+                Divider()
+                Button(L("Lens Shift Haut (↑)", "Lens Shift Up (↑)")) {
+                    model.triggerKeyboardLens(.shiftUp)
+                }
+                Button(L("Lens Shift Bas (↓)", "Lens Shift Down (↓)")) {
+                    model.triggerKeyboardLens(.shiftDown)
+                }
+                Button(L("Lens Shift Gauche (←)", "Lens Shift Left (←)")) {
+                    model.triggerKeyboardLens(.shiftLeft)
+                }
+                Button(L("Lens Shift Droite (→)", "Lens Shift Right (→)")) {
+                    model.triggerKeyboardLens(.shiftRight)
+                }
+                Button(L("Centrer l'optique", "Center Lens")) {
+                    model.triggerKeyboardLens(.lensCenter)
+                }
+            }
+            .disabled(model.fleet.activeTargets.isEmpty)
+
             Divider()
 
             Button(L("Actualiser tout le parc", "Refresh Entire Fleet")) {
@@ -191,6 +216,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) lazy var model = AppModel(startServices: !headless, persistEnabled: !headless)
     private var headless = false
     private var didStart = false
+    private var keyMonitor: Any? = nil
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         AppVersion.runIfRequested()
@@ -219,6 +245,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !didStart else { return }
         didStart = true
         NSApp.appearance = NSAppearance(named: .darkAqua)
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            if self.model.handleKeyDown(event) {
+                return nil
+            }
+            return event
+        }
         let files = CommandLine.arguments.dropFirst().filter { !$0.hasPrefix("-") }
         if let first = files.first {
             let url = URL(fileURLWithPath: (first as NSString).expandingTildeInPath)

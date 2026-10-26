@@ -255,7 +255,7 @@ struct OSCGuideSheet: View {
                     Text(L("Pilotage OSC, API HTTP & Serveur MCP — SimplePJ", "OSC Control, HTTP API & MCP Server — SimplePJ"))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Theme.text.swiftUI)
-                    Text(L("Pilotez vos vidéoprojecteurs depuis OSCScore, Montage, eMotion, QLab, Chataigne ou un agent MCP.", "Control your projectors from OSCScore, Montage, eMotion, QLab, Chataigne, or an MCP agent."))
+                    Text(L("Pilotage des vidéoprojecteurs depuis OSCScore, Montage, eMotion, QLab, Chataigne ou un agent MCP.", "Control projectors from OSCScore, Montage, eMotion, QLab, Chataigne, or an MCP agent."))
                         .font(.system(size: 11.5))
                         .foregroundStyle(Theme.textDim.swiftUI)
                 }
@@ -369,13 +369,13 @@ struct AboutSheet: View {
                 icon: "antenna.radiowaves.left.and.right",
                 tint: Theme.osc,
                 title: L("Groupes #tags, OSC, HTTP & MCP", "#tag Groups, OSC, HTTP & MCP"),
-                detail: L("Groupez vos projecteurs (#face, #cyclo, #sol) et pilotez-les au clavier, en OSC (:9130), HTTP (/v1 :17930), AppleScript ou via le serveur MCP (simplepj-mcp).", "Group projectors (#front, #cyclo, #floor) and control them via keyboard, OSC (:9130), HTTP (/v1 :17930), AppleScript, or the MCP server (simplepj-mcp).")
+                detail: L("Groupement des projecteurs (#face, #cyclo, #sol) et pilotage au clavier, en OSC (:9130), HTTP (/v1 :17930), AppleScript ou via le serveur MCP (simplepj-mcp).", "Group projectors (#front, #cyclo, #floor) and control them via keyboard, OSC (:9130), HTTP (/v1 :17930), AppleScript, or the MCP server (simplepj-mcp).")
             ),
             Feature(
                 icon: "play.tv",
                 tint: Theme.tcp,
                 title: L("Simulateur de plateau & Import", "Stage Simulator & Import"),
-                detail: L("4 serveurs TCP PJLink Classe 2 embarqués sur 127.0.0.1 pour préparer vos conduites hors plateau, et import en 1 clic depuis ProjectorManager.", "4 embedded PJLink Class 2 TCP servers on 127.0.0.1 for offline show preparation, plus 1-click import from ProjectorManager.")
+                detail: L("4 serveurs TCP PJLink Classe 2 embarqués sur 127.0.0.1 pour préparer les conduites hors plateau, et import en 1 clic depuis ProjectorManager.", "4 embedded PJLink Class 2 TCP servers on 127.0.0.1 for offline show preparation, plus 1-click import from ProjectorManager.")
             ),
         ]
     }
@@ -538,10 +538,13 @@ struct ShortcutsSheet: View {
 
     static var groups: [(String, [(String, String)])] {
         [
-            (L("Plateau & Volets", "Stage & Shutters"), [
+            (L("Plateau, Volets & Optique", "Stage, Shutters & Lens"), [
                 ("⌘B", L("NOIR PLATEAU : Fermer les volets de la cible (AVMT 31)", "STAGE BLACKOUT: Close target shutters (AVMT 31)")),
                 ("⇧⌘B", L("Ouvrir les volets de la cible (AVMT 30)", "Open target shutters (AVMT 30)")),
                 ("⌃⌘F", L("Geler / Dégeler l'image sur la cible (FREZ)", "Toggle image freeze on target (FREZ)")),
+                ("⌘G", L("Afficher / Masquer la grille de calage (Optoma ZU / Epson EB-L)", "Toggle alignment grid (Optoma ZU / Epson EB-L)")),
+                ("↑ ↓ ← →", L("Lens Shift H/V du projecteur sélectionné (Optoma / Epson)", "Lens Shift H/V on selected projector (Optoma / Epson)")),
+                ("⇧ + ↑ ↓ ← →", L("Lens Shift rapide (×3 pas moteur)", "Fast Lens Shift (×3 motor steps)")),
                 (L("⌥ + Clic Veille", "⌥ + Click Standby"), L("Mettre en veille sans fenêtre de confirmation", "Put into standby without confirmation dialog")),
             ]),
             (L("Découverte & Parc", "Discovery & Fleet"), [
@@ -761,12 +764,12 @@ struct HelpManualSheet: View {
             numberedStep(
                 number: "1",
                 title: L("Découvrir le réseau (:4352) ou lancer le plateau simulé", "Discover the network (:4352) or launch the simulated stage rig"),
-                body: L("Choisissez l'interface réseau en haut à gauche puis cliquez sur « Découvrir » (⇧⌘D) : SimplePJ sonde un sous-réseau /24 complet en ~1,5 s. Hors plateau, cliquez sur « Simuler un plateau (4 VP) » pour lancer 4 serveurs PJLink Classe 2 réels sur 127.0.0.1.", "Pick your network interface at the top left and click \"Discover\" (⇧⌘D): SimplePJ probes a full /24 subnet in ~1.5 s. Offline, click \"Simulate Stage Rig (4 PJ)\" to launch 4 real PJLink Class 2 TCP servers on 127.0.0.1.")
+                body: L("Choisir l'interface réseau en haut à gauche puis cliquer sur « Découvrir » (⇧⌘D) : SimplePJ sonde un sous-réseau /24 complet en ~1,5 s. Hors plateau, cliquer sur « Simuler un plateau (4 VP) » pour lancer 4 serveurs PJLink Classe 2 réels sur 127.0.0.1.", "Pick a network interface at the top left and click \"Discover\" (⇧⌘D): SimplePJ probes a full /24 subnet in ~1.5 s. Offline, click \"Simulate Stage Rig (4 PJ)\" to launch 4 real PJLink Class 2 TCP servers on 127.0.0.1.")
             )
             numberedStep(
                 number: "2",
                 title: L("Déverrouiller les mots de passe d'usine en un clic", "Unlock factory passwords in one click"),
-                body: L("Si un projecteur répond PJLINK 1 (mot de passe requis), cliquez sur « Tester mots de passe » : SimplePJ teste automatiquement les mots de passe d'usine courants (panasonic, admin, pjlink, JBMIA, 0000…).", "If a projector answers PJLINK 1 (password required), click \"Test Passwords\": SimplePJ automatically probes common factory passwords (panasonic, admin, pjlink, JBMIA, 0000…).")
+                body: L("Si un projecteur répond PJLINK 1 (mot de passe requis), cliquer sur « Tester mots de passe » : SimplePJ teste automatiquement les mots de passe d'usine courants (panasonic, admin, pjlink, JBMIA, 0000…).", "If a projector answers PJLINK 1 (password required), click \"Test Passwords\": SimplePJ automatically probes common factory passwords (panasonic, admin, pjlink, JBMIA, 0000…).")
             )
             numberedStep(
                 number: "3",
@@ -776,7 +779,7 @@ struct HelpManualSheet: View {
             numberedStep(
                 number: "4",
                 title: L("Enregistrer (.simplepj) ou exporter la fiche technique (⌘E)", "Save (.simplepj) or export the technical sheet (⌘E)"),
-                body: L("Sauvegardez votre parc en .simplepj (⌘S) ou exportez une fiche technique complète (TXT, CSV, JSON, IP:port) incluant modèles, numéros de série, entrées et heures de lampe.", "Save your fleet as .simplepj (⌘S) or export a complete technical sheet (TXT, CSV, JSON, IP:port) with models, serial numbers, inputs, and lamp hours.")
+                body: L("Enregistrer le parc en .simplepj (⌘S) ou exporter une fiche technique complète (TXT, CSV, JSON, IP:port) incluant modèles, numéros de série, entrées et heures de lampe.", "Save the fleet as .simplepj (⌘S) or export a complete technical sheet (TXT, CSV, JSON, IP:port) with models, serial numbers, inputs, and lamp hours.")
             )
             calloutBox(
                 icon: "eye.slash.fill",
@@ -794,7 +797,7 @@ struct HelpManualSheet: View {
                 subtitle: L("Piloter un projecteur, une sélection multiple ou un groupe de plateau d'un seul geste.", "Control a single projector, a multi-selection, or a stage group in a single action.")
             )
             bulletList([
-                (L("Groupes automatiques par #tags", "Automatic #tag groups"), L("Ajoutez des #tags directement dans le nom d'un projecteur (ex. « Face Cour #face #cour », « Cyclo #cyclo »). Vos groupes apparaissent automatiquement dans la barre latérale gauche : un clic filtre la vue, et un clic droit permet d'ouvrir/fermer les volets de tout le groupe.", "Add #tags directly in a projector's name (e.g. \"Stage Left #front #left\", \"Cyclo #cyclo\"). Groups appear automatically in the left sidebar: click to filter, or right-click to open/close shutters for the entire group.")),
+                (L("Groupes automatiques par #tags", "Automatic #tag groups"), L("Ajouter des #tags directement dans le nom d'un projecteur (ex. « Face Cour #face #cour », « Cyclo #cyclo »). Les groupes apparaissent automatiquement dans la barre latérale gauche : un clic filtre la vue, et un clic droit permet d'ouvrir/fermer les volets de tout le groupe.", "Add #tags directly in a projector's name (e.g. \"Stage Left #front #left\", \"Cyclo #cyclo\"). Groups appear automatically in the left sidebar: click to filter, or right-click to open/close shutters for the entire group.")),
                 (L("Barre maîtresse de plateau", "Stage Master Bar"), L("Les boutons « NOIR · Fermer volets » (⌘B), « Ouvrir volets » (⇧⌘B), « Allumer », « Veille », « Gel » et « Entrée… » agissent sur la sélection active, le groupe filtré ou tout le parc.", "The \"BLACKOUT · Close Shutters\" (⌘B), \"Open Shutters\" (⇧⌘B), \"Power On\", \"Standby\", \"Freeze\", and \"Input…\" buttons act on the active selection, filtered group, or entire fleet.")),
                 (L("Wake-on-LAN & Interface Web", "Wake-on-LAN & Web UI"), L("SimplePJ relève automatiquement l'adresse MAC de chaque projecteur dans la table ARP macOS pour permettre le réveil réseau (Wake-on-LAN, ⇧⌘W) et l'ouverture directe de l'interface HTTP du projecteur.", "SimplePJ automatically reads each projector's MAC address from the macOS ARP table to support network wake-up (Wake-on-LAN, ⇧⌘W) and direct opening of the projector's HTTP web interface."))
             ])
@@ -819,11 +822,11 @@ struct HelpManualSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             sectionHeader(
                 title: L("Migration & Compatibilité ProjectorManager", "ProjectorManager Migration & Compatibility"),
-                subtitle: L("Retrouvez vos habitudes et vos scripts de ProjectorManager (SIGMASIX).", "Keep your workflows and scripts from ProjectorManager (SIGMASIX).")
+                subtitle: L("Compatibilité directe avec les configurations et scripts de ProjectorManager (SIGMASIX).", "Direct compatibility with workflows and scripts from ProjectorManager (SIGMASIX).")
             )
             bulletList([
-                (L("Import en 1 clic de vos projecteurs enregistrés (⇧⌘I)", "1-click import of saved projectors (⇧⌘I)"), L("SimplePJ lit automatiquement les préférences de ProjectorManager (ch.sigmasix.ProjectorManager) et importe toutes vos adresses IP et mots de passe d'un seul clic.", "SimplePJ automatically reads ProjectorManager preferences (ch.sigmasix.ProjectorManager) and imports all your IP addresses and passwords in a single click.")),
-                (L("Contrôles directs en ligne en vue Liste (⌘2)", "Inline direct controls in List View (⌘2)"), L("Retrouvez l'efficacité de la vue liste avec les commutateurs [ON | OFF], [OUV | NOIR], Mute Audio, le menu déroulant d'entrée vidéo et le popover Lampe / ERST directement sur chaque ligne.", "Enjoy fast list-view operation with inline [ON | OFF], [OPEN | BLK], Audio Mute switches, video input dropdown, and Lamp / ERST popover directly on every row.")),
+                (L("Import en 1 clic des projecteurs enregistrés (⇧⌘I)", "1-click import of saved projectors (⇧⌘I)"), L("SimplePJ lit automatiquement les préférences de ProjectorManager (ch.sigmasix.ProjectorManager) et importe toutes les adresses IP et mots de passe d'un seul clic.", "SimplePJ automatically reads ProjectorManager preferences (ch.sigmasix.ProjectorManager) and imports all IP addresses and passwords in a single click.")),
+                (L("Contrôles directs en ligne en vue Liste (⌘2)", "Inline direct controls in List View (⌘2)"), L("La vue Liste affiche les commutateurs [ON | OFF], [OUV | NOIR], Mute Audio, le menu déroulant d'entrée vidéo et le popover Lampe / ERST directement sur chaque ligne.", "Enjoy fast list-view operation with inline [ON | OFF], [OPEN | BLK], Audio Mute switches, video input dropdown, and Lamp / ERST popover directly on every row.")),
                 (L("Dictionnaire AppleScript 100 % compatible", "100% compatible AppleScript dictionary"), L("Les commandes AppleScript PowerOn, PowerOff, AvMute, AvUnMute et Inpt {code, index} fonctionnent à l'identique dans QLab ou éditeur de scripts en ciblant \"SimplePJ\".", "AppleScript commands PowerOn, PowerOff, AvMute, AvUnMute, and Inpt {code, index} work identically in QLab or Script Editor when targeting \"SimplePJ\"."))
             ])
         }
@@ -1005,7 +1008,7 @@ struct PreferencesView: View {
                 .font(.system(size: 11.5)).foregroundStyle(Theme.text.swiftUI)
             Divider().overlay(Theme.separator.swiftUI)
             SectionHeader(L("Réseau & Confidentialité", "Network & Privacy"))
-            Text(L("SimplePJ communique uniquement en local avec vos vidéoprojecteurs (TCP/UDP 4352), vos logiciels de régie (OSC :9130, HTTP 127.0.0.1:17930) et le serveur MCP local (simplepj-mcp). Aucune télémétrie, aucune connexion externe.", "SimplePJ communicates strictly locally with your projectors (TCP/UDP 4352), show-control software (OSC :9130, HTTP 127.0.0.1:17930), and the local MCP server (simplepj-mcp). Zero telemetry, zero external connections."))
+            Text(L("SimplePJ communique uniquement en local avec les vidéoprojecteurs (TCP/UDP 4352), les logiciels de régie (OSC :9130, HTTP 127.0.0.1:17930) et le serveur MCP local (simplepj-mcp). Aucune télémétrie, aucune connexion externe.", "SimplePJ communicates strictly locally with projectors (TCP/UDP 4352), show-control software (OSC :9130, HTTP 127.0.0.1:17930), and the local MCP server (simplepj-mcp). Zero telemetry, zero external connections."))
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.textDim.swiftUI)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1113,7 +1116,7 @@ struct UpdateSheet: View {
                         Text(L("SimplePJ v\(v) est à jour.", "SimplePJ v\(v) is up to date."))
                             .font(.system(size: 12.5, weight: .semibold))
                             .foregroundStyle(Theme.text.swiftUI)
-                        Text(L("Vous utilisez la dernière version disponible.", "You are running the latest available version."))
+                        Text(L("Cette version est la dernière disponible.", "This is the latest available version."))
                             .font(.system(size: 11))
                             .foregroundStyle(Theme.textDim.swiftUI)
                     }

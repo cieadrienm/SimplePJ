@@ -110,6 +110,10 @@ public final class SimplePJMCPServer {
             return textResult(try call("POST", "/input", body: args))
         case "simplepj_freeze":
             return textResult(try call("POST", "/freeze", body: args))
+        case "simplepj_pattern":
+            return textResult(try call("POST", "/pattern", body: args))
+        case "simplepj_lens":
+            return textResult(try call("POST", "/lens", body: args))
         case "simplepj_discover":
             return textResult(try call("POST", "/discover", body: args))
         case "simplepj_add_projector":

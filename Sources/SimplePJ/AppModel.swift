@@ -74,6 +74,10 @@ final class AppModel {
     var searchFocusRequest: Int = 0
     var labelFocusRequest: Int = 0
 
+    // Motorized Lens keyboard / UI state
+    var lensStepMultiplier: Int = 1
+    var activeLensAction: OptomaLensAction? = nil
+
     // Ephemeral flash message
     var flashMessage: String? = nil
 
@@ -118,6 +122,62 @@ final class AppModel {
             if self?.flashMessage == text {
                 self?.flashMessage = nil
             }
+        }
+    }
+
+    // MARK: - Keyboard Lens Shift (Arrow Keys when a Projector is Selected)
+
+    var hasModalSheetOpen: Bool {
+        showAddProjector || showExport || showOSCGuide || showShortcuts
+            || showHelp || showAbout || showUpdater
+            || renamingRange != nil || powerConfirm != nil || alert != nil
+    }
+
+    func triggerKeyboardLens(_ action: OptomaLensAction, fast: Bool = false) {
+        let targets = fleet.selectedProjectors
+        guard !targets.isEmpty else { return }
+        let steps = fast ? max(3, lensStepMultiplier * 3) : lensStepMultiplier
+        activeLensAction = action
+        fleet.triggerLens(action, steps: steps, on: targets)
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(220))
+            if self?.activeLensAction == action {
+                self?.activeLensAction = nil
+            }
+        }
+    }
+
+    /// Handles local `.keyDown` events for motorized Lens Shift via keyboard arrow keys (`↑ ↓ ← →`).
+    /// Returns `true` if the event was consumed.
+    func handleKeyDown(_ event: NSEvent) -> Bool {
+        guard !hasModalSheetOpen else { return false }
+        // Do not intercept arrow keys when the user is typing in any text field
+        if let responder = NSApp.keyWindow?.firstResponder, responder is NSText {
+            return false
+        }
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        // Ignore if Command or Control is held
+        if flags.contains(.command) || flags.contains(.control) {
+            return false
+        }
+        guard !fleet.selectedProjectors.isEmpty else { return false }
+
+        let fast = flags.contains(.shift) || flags.contains(.option)
+        switch event.keyCode {
+        case 126: // Up Arrow ↑
+            triggerKeyboardLens(.shiftUp, fast: fast)
+            return true
+        case 125: // Down Arrow ↓
+            triggerKeyboardLens(.shiftDown, fast: fast)
+            return true
+        case 123: // Left Arrow ←
+            triggerKeyboardLens(.shiftLeft, fast: fast)
+            return true
+        case 124: // Right Arrow →
+            triggerKeyboardLens(.shiftRight, fast: fast)
+            return true
+        default:
+            return false
         }
     }
 

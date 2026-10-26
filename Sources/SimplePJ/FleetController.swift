@@ -342,6 +342,60 @@ final class FleetController {
         executeOnTargets([projector], commands: [.raw(trimmed)])
     }
 
+    // MARK: - Optoma ProScene (ZU920ST) & Epson Pro L (EB-L1755U + ELPLU03/03S) Test Pattern & Motorized Lens Control
+
+    func setTestPattern(_ pattern: OptomaTestPattern, on targets: [Projector]? = nil) {
+        let list = targets ?? activeTargets
+        guard !list.isEmpty else { return }
+        statusMessage = L("Mire : \(pattern.label)", "Test Pattern: \(pattern.label)") + " → \(Format.count(list.count, L("projecteur", "projector")))…"
+        for target in list {
+            if let idx = projectors.firstIndex(where: { $0.id == target.id }) {
+                projectors[idx].testPattern = pattern
+            }
+            Task.detached(priority: .userInitiated) {
+                let res = OptomaClient.setTestPattern(pattern, on: target)
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    self.exchanges.append(res.exchange)
+                    if self.exchanges.count > 400 {
+                        self.exchanges.removeFirst(self.exchanges.count - 400)
+                    }
+                    if res.ok {
+                        self.statusMessage = L("Mire « \(pattern.label) » appliquée sur \(target.displayTitle) (\(res.transport))", "Pattern \"\(pattern.label)\" applied on \(target.displayTitle) (\(res.transport))")
+                    } else {
+                        self.statusMessage = L("Échec mire sur \(target.displayTitle) — vérifiez ESC/VP.net :3629, Telnet :23 ou HTTP :80", "Pattern failed on \(target.displayTitle) — check ESC/VP.net :3629, Telnet :23 or HTTP :80")
+                    }
+                    self.saveFleet()
+                }
+            }
+        }
+    }
+
+    func triggerLens(_ action: OptomaLensAction, steps: Int = 1, on targets: [Projector]? = nil) {
+        let list = targets ?? activeTargets
+        guard !list.isEmpty else { return }
+        let clampedSteps = max(1, min(10, steps))
+        let suffix = clampedSteps > 1 ? " ×\(clampedSteps)" : ""
+        statusMessage = "\(action.label)\(suffix) → \(Format.count(list.count, L("projecteur", "projector")))…"
+        for target in list {
+            Task.detached(priority: .userInitiated) {
+                let res = OptomaClient.triggerLens(action, steps: clampedSteps, on: target)
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    self.exchanges.append(res.exchange)
+                    if self.exchanges.count > 400 {
+                        self.exchanges.removeFirst(self.exchanges.count - 400)
+                    }
+                    if res.ok {
+                        self.statusMessage = "\(action.label)\(suffix) → \(target.displayTitle) (\(res.transport))"
+                    } else {
+                        self.statusMessage = L("Échec commande optique sur \(target.displayTitle) — vérifiez ESC/VP.net :3629, Telnet :23 ou HTTP :80", "Lens command failed on \(target.displayTitle) — check ESC/VP.net :3629, Telnet :23 or HTTP :80")
+                    }
+                }
+            }
+        }
+    }
+
     func executeOnTargets(_ targets: [Projector], commands: [PJLinkCommand]) {
         guard !targets.isEmpty else { return }
         for target in targets {
@@ -404,6 +458,7 @@ final class FleetController {
             var merged = updated
             merged.label = projectors[idx].label
             merged.notes = projectors[idx].notes
+            merged.testPattern = projectors[idx].testPattern ?? merged.testPattern
             if !projectors[idx].password.isEmpty && merged.password.isEmpty {
                 merged.password = projectors[idx].password
             }
@@ -413,6 +468,7 @@ final class FleetController {
             merged.id = projectors[idx].id
             merged.label = projectors[idx].label ?? merged.label
             merged.notes = projectors[idx].notes ?? merged.notes
+            merged.testPattern = projectors[idx].testPattern ?? merged.testPattern
             projectors[idx] = merged
         } else {
             projectors.append(updated)
@@ -794,6 +850,20 @@ final class FleetController {
             if let raw = firstArgStr, let first = targets.first {
                 sendRawCommand(raw, to: first)
             }
+        case "pattern", "grid", "mire":
+            if let str = firstArgStr, let pat = OptomaTestPattern.parse(str) {
+                setTestPattern(pat, on: targets)
+            } else if let b = firstArgBool {
+                setTestPattern(b ? .whiteGrid : .off, on: targets)
+            }
+        case "lens", "optics", "focus", "zoom":
+            if let str = firstArgStr {
+                let token = (action == "focus" || action == "zoom") && !str.hasPrefix(action) ? "\(action)\(str)" : str
+                if let lensAct = OptomaLensAction.parse(token) {
+                    let steps = msg.arguments.count > 1 ? (Int(msg.arguments[1].stringValue) ?? 1) : 1
+                    triggerLens(lensAct, steps: steps, on: targets)
+                }
+            }
         default:
             break
         }
@@ -1007,6 +1077,8 @@ final class FleetController {
                     "POST /v1/power {\"target\":\"all|#tag|1|ip\",\"on\":true}",
                     "POST /v1/input {\"target\":\"all|#tag|1|ip\",\"code\":\"31|HDMI 1\"}",
                     "POST /v1/freeze {\"target\":\"all|#tag|1|ip\",\"freeze\":true}",
+                    "POST /v1/pattern {\"target\":\"all|#tag|1|ip\",\"pattern\":\"off|white-grid|green-grid|magenta-grid|white|black|bars\"}",
+                    "POST /v1/lens {\"target\":\"all|#tag|1|ip\",\"action\":\"up|down|left|right|focus+|focus-|zoom+|zoom-|center|unlock|lock\",\"steps\":1}",
                     "POST /v1/discover {\"range\":\"10.0.0.0/24\",\"simulate\":true,\"importProjectorManager\":true}",
                     "POST /v1/projectors {\"ip\":\"10.0.0.2\",\"port\":4352,\"label\":\"Face Cour #face\",\"password\":\"\"}",
                     "POST /v1/command {\"target\":\"1\",\"raw\":\"%1LAMP ?\",\"refresh\":true}",
@@ -1020,6 +1092,8 @@ final class FleetController {
                     "/simplepj/group/<tag>/shutter 1|0",
                     "/simplepj/pj/<index|ip|name>/shutter 1|0",
                     "/simplepj/pj/<index|ip|name>/input <code|name>",
+                    "/simplepj/pj/<index|ip|name>/pattern <off|white-grid|green-grid|magenta-grid>",
+                    "/simplepj/pj/<index|ip|name>/lens <up|down|left|right|focus+|focus-|zoom+|zoom-|center|unlock>",
                     "/simplepj/pj/<index|ip|name>/raw \"%1LAMP ?\"",
                     "/simplepj/refresh",
                 ],
@@ -1079,6 +1153,25 @@ final class FleetController {
             let freeze = (args["freeze"] as? Bool) ?? true
             setFreeze(freeze, on: targets)
             writeJSON(["ok": true, "targetCount": targets.count, "freeze": freeze])
+
+        case ("POST", "/v1/pattern"):
+            let targets = resolveHTTPTargets(args["target"] as? String)
+            let rawPattern = (args["pattern"] as? String) ?? ((args["code"] as? Int).map(String.init) ?? "white-grid")
+            let pat = OptomaTestPattern.parse(rawPattern) ?? .whiteGrid
+            setTestPattern(pat, on: targets)
+            writeJSON(["ok": true, "targetCount": targets.count, "pattern": pat.shortLabel, "code": pat.rawValue])
+
+        case ("POST", "/v1/lens"):
+            let targets = resolveHTTPTargets(args["target"] as? String)
+            let rawAction = (args["action"] as? String) ?? "up"
+            let steps = (args["steps"] as? Int) ?? 1
+            guard let act = OptomaLensAction.parse(rawAction) else {
+                statusBox.set(400)
+                writeJSON(["error": "invalid lens action '\(rawAction)'"])
+                return
+            }
+            triggerLens(act, steps: steps, on: targets)
+            writeJSON(["ok": true, "targetCount": targets.count, "action": act.rawValue, "steps": steps])
 
         case ("POST", "/v1/discover"):
             if (args["importProjectorManager"] as? Bool) == true {

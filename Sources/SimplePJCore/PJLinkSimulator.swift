@@ -251,6 +251,18 @@ public final class PJLinkSimulatedServer: @unchecked Sendable {
     }
 
     private func processCommand(_ raw: String) -> String {
+        if raw.hasPrefix("~") {
+            return "OK"
+        }
+        let upper = raw.uppercased()
+        if upper.hasPrefix("00OTS:") || upper.hasPrefix("00VXX:") || upper.hasPrefix("ADZZ;") {
+            return "00OK"
+        }
+        if upper.hasPrefix("LENS") || upper.hasPrefix("HLENS") || upper.hasPrefix("FOCUS")
+            || upper.hasPrefix("ZOOM") || upper.hasPrefix("DISTORTION") || upper.hasPrefix("POPPAT")
+            || upper.hasPrefix("KEY ") || upper.hasPrefix("LENSLOCK") {
+            return ":"
+        }
         guard raw.hasPrefix("%"), raw.count >= 6 else {
             return "%1ERR1=ERR1"
         }
@@ -494,37 +506,37 @@ public final class PJLinkDemoRig: @unchecked Sendable {
             (
                 label: "Face Jardin #face #jardin",
                 mac: "70:B3:D5:8A:10:02",
-                notes: "Pont de face jardin · Optique 0.8–1.0:1 · Patch HDMI 1 = Mac Studio",
+                notes: "Pont de face jardin · Optique courte 0.65–0.75:1 · Grille & Lens Shift IP",
                 config: PJLinkSimulatedServer.Config(
                     name: "VP-FACE-JARDIN",
-                    manufacturer: "Panasonic",
-                    modelName: "PT-RZ990",
-                    extraInfo: "1-Chip DLP Laser 9400lm",
+                    manufacturer: "Optoma",
+                    modelName: "ZU920ST",
+                    extraInfo: "DuraCore Laser WUXGA 9800lm · Short Throw",
                     pjlinkClass: 2,
-                    serialNumber: "SW2640912",
-                    firmwareVersion: "2.14.0",
+                    serialNumber: "Q7ZU920ST042",
+                    firmwareVersion: "C08",
                     nativeResolution: "1920x1200",
                     inputResolution: "1920x1080",
                     initialPower: .on,
                     initialShutter: .open,
                     initialInput: "31",
-                    lamps: [PJLinkLamp(index: 1, hours: 1385, isOn: true)],
-                    filterHours: 295,
+                    lamps: [PJLinkLamp(index: 1, hours: 640, isOn: true)],
+                    filterHours: 0,
                     transitionDuration: transitionDuration
                 )
             ),
             (
                 label: "Cyclo Lointain #cyclo #fond",
                 mac: "AC:1F:6B:44:22:03",
-                notes: "Ultra-courte focale ELPLX02S · Volet fermé pendant l'entrée public",
+                notes: "Optique courte ELPLU03S (0.65–0.78:1) · ESC/VP.net :3629 · Volet fermé pendant l'entrée public",
                 config: PJLinkSimulatedServer.Config(
                     name: "VP-CYCLO-HAUT",
                     manufacturer: "EPSON",
-                    modelName: "EB-PU2010B",
-                    extraInfo: "3LCD Laser 10000lm",
+                    modelName: "EB-L1755U",
+                    extraInfo: "3LCD Laser 15000lm · ELPLU03S",
                     pjlinkClass: 2,
-                    serialNumber: "X9JW41082",
-                    firmwareVersion: "1.08",
+                    serialNumber: "X4KL1755U01",
+                    firmwareVersion: "1.12",
                     nativeResolution: "1920x1200",
                     inputResolution: "1920x1200",
                     initialPower: .on,
@@ -533,7 +545,7 @@ public final class PJLinkDemoRig: @unchecked Sendable {
                     inputs: [
                         PJLinkInput(code: "31", customName: "HDMI"),
                         PJLinkInput(code: "32", customName: "DVI-D"),
-                        PJLinkInput(code: "34", customName: "SDI"),
+                        PJLinkInput(code: "34", customName: "3G-SDI"),
                         PJLinkInput(code: "52", customName: "HDBaseT"),
                     ],
                     lamps: [PJLinkLamp(index: 1, hours: 860, isOn: true)],

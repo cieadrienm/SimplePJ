@@ -15,9 +15,12 @@ struct ContentView: View {
 
             HStack(spacing: 0) {
                 if model.showSidebar {
-                    SidebarView(model: model)
-                        .frame(width: 224)
-                    Rectangle().fill(Theme.separator.swiftUI).frame(width: 1)
+                    HStack(spacing: 0) {
+                        SidebarView(model: model)
+                            .frame(width: 224)
+                        Rectangle().fill(Theme.separator.swiftUI).frame(width: 1)
+                    }
+                    .transition(.move(edge: .leading).combined(with: .opacity))
                 }
 
                 Group {
@@ -44,19 +47,27 @@ struct ContentView: View {
                 }
 
                 if model.showInspector {
-                    Rectangle().fill(Theme.separator.swiftUI).frame(width: 1)
-                    InspectorView(model: model)
-                        .frame(width: 316)
+                    HStack(spacing: 0) {
+                        Rectangle().fill(Theme.separator.swiftUI).frame(width: 1)
+                        InspectorView(model: model)
+                            .frame(width: 316)
+                    }
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+            .animation(.spring(duration: 0.22, bounce: 0.0), value: model.showSidebar)
+            .animation(.spring(duration: 0.22, bounce: 0.0), value: model.showInspector)
 
             if model.showConsoleDrawer {
                 ConsoleDrawer(model: model)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             StatusBar(model: model)
         }
+        .animation(.spring(duration: 0.22, bounce: 0.0), value: model.showConsoleDrawer)
         .background(Theme.background.swiftUI)
         .preferredColorScheme(.dark)
         .environment(\.locale, model.language.locale)

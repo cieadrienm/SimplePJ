@@ -182,6 +182,32 @@ struct ProjectorCard: View {
                     .disabled(!online)
                     .help(projector.freeze ? L("Dégeler l'image (%2FREZ 0)", "Unfreeze image (%2FREZ 0)") : L("Geler l'image (%2FREZ 1)", "Freeze image (%2FREZ 1)"))
                 }
+
+                // Optoma ProScene (ZU920ST) & Epson Pro L (EB-L1755U) Grid button
+                if projector.supportsExtendedOptics || projector.activeTestPattern != .off {
+                    let hasGrid = projector.activeTestPattern != .off
+                    Button {
+                        let next: OptomaTestPattern = hasGrid ? .off : .whiteGrid
+                        model.fleet.setTestPattern(next, on: [projector])
+                    } label: {
+                        Image(systemName: "squareshape.split.3x3")
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .foregroundStyle(hasGrid ? Theme.background.swiftUI : Theme.accent.swiftUI)
+                            .frame(width: 30, height: 29)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(hasGrid ? Theme.accent.swiftUI : Theme.accent.swiftUI.opacity(0.12))
+                            )
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!online)
+                    .help(
+                        hasGrid
+                            ? L("Masquer la grille de calage", "Hide Alignment Grid")
+                            : L("Afficher la grille de calage (Optoma TCP:23 / Epson ESC/VP.net:3629)", "Show Alignment Grid (Optoma TCP:23 / Epson ESC/VP.net:3629)")
+                    )
+                }
             }
 
             // Quick Input Strip
@@ -338,6 +364,19 @@ struct ProjectorCard: View {
             ForEach(pj.availableInputs) { inp in
                 Button((pj.currentInput == inp.code ? "✓ " : "") + inp.fullLabel) {
                     model.fleet.setInput(inp.code, on: [pj])
+                }
+            }
+        }
+        Menu(L("Mire & Optique (Optoma ZU / Epson EB-L)", "Test Pattern & Lens (Optoma ZU / Epson EB-L)")) {
+            ForEach(OptomaTestPattern.allCases) { pat in
+                Button((pj.activeTestPattern == pat ? "✓ " : "") + pat.label) {
+                    model.fleet.setTestPattern(pat, on: [pj])
+                }
+            }
+            Divider()
+            ForEach(OptomaLensAction.allCases) { act in
+                Button(act.label) {
+                    model.fleet.triggerLens(act, steps: 1, on: [pj])
                 }
             }
         }
@@ -789,7 +828,7 @@ struct WelcomeView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Theme.text.swiftUI)
 
-                Text(L("Découvrez automatiquement tous les vidéoprojecteurs PJLink (Classe 1 & 2, port 4352) sur votre sous-réseau,\nou lancez un plateau simulé de 4 projecteurs pour préparer vos conduites et commandes OSC.", "Automatically discover all PJLink projectors (Class 1 & 2, port 4352) on your subnet,\nor launch a 4-projector simulated stage rig to prepare your cues and OSC commands."))
+                Text(L("Découverte automatique des vidéoprojecteurs PJLink (Classe 1 & 2, port 4352) sur le sous-réseau,\nou lancement d'un plateau simulé de 4 projecteurs pour préparer les conduites et commandes OSC.", "Automatic discovery of PJLink projectors (Class 1 & 2, port 4352) on the subnet,\nor 4-projector simulated stage rig for offline cue and OSC preparation."))
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textDim.swiftUI)
                     .multilineTextAlignment(.center)
