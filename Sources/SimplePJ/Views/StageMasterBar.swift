@@ -2,30 +2,32 @@ import SimplePJCore
 import SwiftUI
 
 /// Dedicated stage control bar for triggering synchronized Shutter (Blackout / Open),
-/// Power (On / Standby), Freeze, and Input changes on the active scope (selection, group, or all).
+/// Power (On / Standby), Freeze, Test Patterns (Grids), and Input changes across ALL projectors in the fleet.
 struct StageMasterBar: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        let targets = model.fleet.activeTargets
+        let targets = model.fleet.projectors
         let hasTargets = !targets.isEmpty
         let allClosed = hasTargets && targets.allSatisfy(\.isShutterClosed)
         let anyProjecting = targets.contains(where: \.isProjectingLight)
         let anyFrozen = targets.contains(where: \.freeze)
+        let anyGrid = targets.contains { $0.activeTestPattern != .off }
 
         HStack(spacing: 10) {
-            // Target scope badge
+            // Target scope badge — always all projectors in the fleet
             HStack(spacing: 6) {
-                Image(systemName: model.fleet.selection.isEmpty ? "sparkles.tv" : "checkmark.circle.fill")
+                Image(systemName: "sparkles.tv")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.accent.swiftUI)
-                Text("\(L("CIBLE", "TARGET")) : \(model.fleet.activeTargetsScopeLabel.uppercased())")
+                Text(L("TOUS LES VP (\(targets.count))", "ALL PROJECTORS (\(targets.count))"))
                     .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Theme.text.swiftUI)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.05)))
+            .help(L("La barre maîtresse pilote toujours l'ensemble des vidéoprojecteurs du parc (\(targets.count) VP)", "The master bar always controls all projectors in the fleet (\(targets.count) PJ)"))
 
             Divider().frame(height: 16)
 
@@ -41,7 +43,7 @@ struct StageMasterBar: View {
                 ) {
                     model.fleet.setShutter(closed: true, on: targets)
                 }
-                .help(L("Fermer le volet optique / AV Mute (31) sur la cible (⌘B)", "Close optical shutter / AV Mute (31) on target (⌘B)"))
+                .help(L("Fermer le volet optique / AV Mute (31) sur tous les projecteurs", "Close optical shutter / AV Mute (31) on all projectors"))
 
                 TextButton(
                     title: L("Ouvrir volets", "Open Shutters"),
@@ -53,7 +55,7 @@ struct StageMasterBar: View {
                 ) {
                     model.fleet.setShutter(closed: false, on: targets)
                 }
-                .help(L("Ouvrir le volet optique / AV Mute (30) sur la cible (⇧⌘B)", "Open optical shutter / AV Mute (30) on target (⇧⌘B)"))
+                .help(L("Ouvrir le volet optique / AV Mute (30) sur tous les projecteurs", "Open optical shutter / AV Mute (30) on all projectors"))
             }
 
             Divider().frame(height: 16)
@@ -69,7 +71,7 @@ struct StageMasterBar: View {
                 ) {
                     model.requestPower(on: true, targets: targets)
                 }
-                .help(L("Allumer la lampe / le laser (POWR 1) sur la cible", "Power on lamp / laser (POWR 1) on target"))
+                .help(L("Allumer la lampe / le laser (POWR 1) sur tous les projecteurs", "Power on lamp / laser (POWR 1) on all projectors"))
 
                 TextButton(
                     title: L("Veille", "Standby"),
@@ -80,12 +82,12 @@ struct StageMasterBar: View {
                 ) {
                     model.requestPower(on: false, targets: targets)
                 }
-                .help(L("Mettre en veille (POWR 0) avec confirmation de sécurité (⌥-clic pour forcer sans confirmation)", "Standby (POWR 0) with safety confirmation (⌥-click to bypass confirmation)"))
+                .help(L("Mettre tous les projecteurs en veille (POWR 0) avec confirmation de sécurité (⌥-clic pour forcer)", "Put all projectors into standby (POWR 0) with safety confirmation (⌥-click to bypass)"))
             }
 
             Divider().frame(height: 16)
 
-            // Freeze toggle (Class 2) & Synchronized Input Menu
+            // Freeze toggle (Class 2), Global Test Pattern (Grid), & Global Input Menu
             TextButton(
                 title: anyFrozen ? L("Dégeler", "Unfreeze") : L("Gel", "Freeze"),
                 symbol: "snowflake",
@@ -96,10 +98,40 @@ struct StageMasterBar: View {
             ) {
                 model.fleet.setFreeze(!anyFrozen, on: targets)
             }
-            .help(L("Geler ou dégeler l'image (PJLink Classe 2 %2FREZ)", "Freeze or unfreeze image (PJLink Class 2 %2FREZ)"))
+            .help(L("Geler ou dégeler l'image sur tous les projecteurs (PJLink Classe 2 %2FREZ)", "Freeze or unfreeze image on all projectors (PJLink Class 2 %2FREZ)"))
 
             Menu {
-                ForEach(model.fleet.commonInputsForActiveTargets) { input in
+                ForEach(OptomaTestPattern.allCases) { pat in
+                    Button {
+                        model.fleet.setTestPattern(pat, on: targets)
+                    } label: {
+                        Label(pat.label, systemImage: pat.symbol)
+                    }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "squareshape.split.3x3")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(anyGrid ? Theme.background.swiftUI : Theme.accent.swiftUI)
+                    Text(L("Grille…", "Grid…"))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(anyGrid ? Theme.background.swiftUI : Theme.text.swiftUI)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(anyGrid ? Theme.background.swiftUI.opacity(0.8) : Theme.textDim.swiftUI)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 5).fill(anyGrid ? Theme.accent.swiftUI : Color.white.opacity(0.06)))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .disabled(!hasTargets)
+            .help(L("Afficher ou masquer les grilles de calage sur tous les projecteurs (Panasonic, Epson, Optoma)", "Show or hide alignment grids on all projectors (Panasonic, Epson, Optoma)"))
+
+            Menu {
+                ForEach(model.fleet.commonInputsForAllProjectors) { input in
                     Button {
                         model.fleet.setInput(input.code, on: targets)
                     } label: {
@@ -126,7 +158,7 @@ struct StageMasterBar: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .disabled(!hasTargets)
-            .help(L("Basculer l'entrée vidéo sur tous les projecteurs ciblés", "Switch video input on all targeted projectors"))
+            .help(L("Basculer l'entrée vidéo sur tous les projecteurs du parc", "Switch video input on all projectors in the fleet"))
 
             Spacer(minLength: 8)
 

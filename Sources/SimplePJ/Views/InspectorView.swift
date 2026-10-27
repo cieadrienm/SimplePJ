@@ -56,36 +56,67 @@ struct InspectorView: View {
     }
 
     private func headerSection(_ pj: Projector) -> some View {
-        HStack(alignment: .top, spacing: 11) {
-            ProjectorOpticBadge(projector: pj, size: 46)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(pj.displayTitle)
-                    .font(.system(size: 14.5, weight: .semibold))
-                    .foregroundStyle(Theme.text.swiftUI)
-                    .lineLimit(2)
-                HStack(spacing: 6) {
-                    Text(pj.endpointLabel)
-                        .font(.system(size: 11.5, design: .monospaced))
-                        .foregroundStyle(Theme.textDim.swiftUI)
-                        .textSelection(.enabled)
-                    Chip(text: L("CLASSE \(pj.pjlinkClass)", "CLASS \(pj.pjlinkClass)"), tint: pj.pjlinkClass >= 2 ? Theme.tcp.swiftUI : Theme.textDim.swiftUI)
-                    if pj.isSimulated {
-                        Chip(text: L("SIMULÉ", "SIMULATED"), tint: Theme.osc.swiftUI)
+        let peers = sameBrandPeers(for: pj)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 11) {
+                ProjectorOpticBadge(projector: pj, size: 46)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(pj.displayTitle)
+                        .font(.system(size: 14.5, weight: .semibold))
+                        .foregroundStyle(Theme.text.swiftUI)
+                        .lineLimit(2)
+                    HStack(spacing: 6) {
+                        Text(pj.endpointLabel)
+                            .font(.system(size: 11.5, design: .monospaced))
+                            .foregroundStyle(Theme.textDim.swiftUI)
+                            .textSelection(.enabled)
+                        Chip(text: L("CLASSE \(pj.pjlinkClass)", "CLASS \(pj.pjlinkClass)"), tint: pj.pjlinkClass >= 2 ? Theme.tcp.swiftUI : Theme.textDim.swiftUI)
+                        if pj.isSimulated {
+                            Chip(text: L("SIMULÉ", "SIMULATED"), tint: Theme.osc.swiftUI)
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        Circle().fill(Theme.statusColor(pj).swiftUI).frame(width: 6, height: 6)
+                        Text(pj.connectionState.label)
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundStyle(Theme.textDim.swiftUI)
+                        if let lat = pj.latencyMs {
+                            Text("· \(Format.latency(lat))")
+                                .font(.system(size: 10.5, design: .monospaced))
+                                .foregroundStyle(Theme.textFaint.swiftUI)
+                        }
                     }
                 }
-                HStack(spacing: 6) {
-                    Circle().fill(Theme.statusColor(pj).swiftUI).frame(width: 6, height: 6)
-                    Text(pj.connectionState.label)
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(Theme.textDim.swiftUI)
-                    if let lat = pj.latencyMs {
-                        Text("· \(Format.latency(lat))")
-                            .font(.system(size: 10.5, design: .monospaced))
-                            .foregroundStyle(Theme.textFaint.swiftUI)
-                    }
-                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
+
+            if peers.count > 1 {
+                let brandLabel = pj.isPanasonic ? "Panasonic" : (pj.isEpson ? "Epson" : (pj.isOptoma ? "Optoma" : (pj.manufacturer ?? L("même marque", "same brand"))))
+                Button {
+                    model.fleet.selection = Set(peers.map(\.id))
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "square.stack.3d.up.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(L("Sélectionner les \(peers.count) \(brandLabel) (action groupée)", "Select all \(peers.count) \(brandLabel) (group action)"))
+                            .font(.system(size: 10.5, weight: .medium))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .foregroundStyle(Theme.accent.swiftUI)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(Theme.accent.swiftUI.opacity(0.10))
+                            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Theme.accent.swiftUI.opacity(0.28), lineWidth: 1))
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(L("Sélectionner tous les projecteurs \(brandLabel) du parc pour afficher les grilles, changer l'entrée ou régler le Lens Shift en groupe", "Select all \(brandLabel) projectors in the fleet to control grids, inputs, or Lens Shift as a group"))
+            }
         }
     }
 
@@ -689,47 +720,450 @@ struct InspectorView: View {
 
     // MARK: - Multi-Selection Inspector
 
+    private func sameBrandPeers(for pj: Projector) -> [Projector] {
+        if pj.isPanasonic { return model.fleet.projectors.filter(\.isPanasonic) }
+        if pj.isEpson { return model.fleet.projectors.filter(\.isEpson) }
+        if pj.isOptoma { return model.fleet.projectors.filter(\.isOptoma) }
+        let mfg = (pj.manufacturer ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !mfg.isEmpty else { return [] }
+        return model.fleet.projectors.filter { ($0.manufacturer ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == mfg }
+    }
+
+    private func brandGroupName(for projectors: [Projector]) -> (title: String, badge: String?, tint: Color) {
+        guard !projectors.isEmpty else { return (L("Sélection", "Selection"), nil, Theme.accent.swiftUI) }
+        if projectors.allSatisfy(\.isPanasonic) {
+            return ("Panasonic PT-RZ / PT-RQ", "NTCONTROL :1024", Theme.alive.swiftUI)
+        }
+        if projectors.allSatisfy(\.isEpson) {
+            return ("Epson EB-L / ELPLU03", "ESC/VP.net :3629", Theme.tcp.swiftUI)
+        }
+        if projectors.allSatisfy(\.isOptoma) {
+            return ("Optoma ProScene ZU", "TCP :23 / HTTP", Theme.accent.swiftUI)
+        }
+        let mfgs = Set(projectors.compactMap { $0.manufacturer?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+        if mfgs.count == 1, let only = mfgs.first {
+            return (only, nil, Theme.tcp.swiftUI)
+        }
+        return (L("Parc mixte", "Mixed Fleet"), "MULTI-PROTO", Theme.osc.swiftUI)
+    }
+
     private var multiSelectionDetails: some View {
         let selected = model.fleet.selectedProjectors
-        return VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(L("Sélection multiple", "Multiple Selection"))
-            Text(L(Format.count(selected.count, "vidéoprojecteur") + " sélectionné\(selected.count > 1 ? "s" : "")", "\(selected.count) projector\(selected.count > 1 ? "s" : "") selected"))
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Theme.text.swiftUI)
+        let allClosed = !selected.isEmpty && selected.allSatisfy(\.isShutterClosed)
+        let anyProjecting = selected.contains(where: \.isProjectingLight)
+        let anyFrozen = selected.contains(where: \.freeze)
+        let allVideoMuted = !selected.isEmpty && selected.allSatisfy { $0.shutter.isVideoMuted }
+        let allAudioMuted = !selected.isEmpty && selected.allSatisfy { $0.shutter.isAudioMuted }
+        let brandInfo = brandGroupName(for: selected)
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    TextButton(title: L("NOIR · Fermer volets", "BLACKOUT · Close Shutters"), symbol: "eye.slash.fill", prominent: true, tint: Theme.accent.swiftUI) {
-                        model.fleet.setShutter(closed: true, on: selected)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                // Header
+                HStack(alignment: .top, spacing: 10) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 9)
+                            .fill(brandInfo.tint.opacity(0.14))
+                            .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(brandInfo.tint.opacity(0.38), lineWidth: 1))
+                        Image(systemName: "square.stack.3d.up.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(brandInfo.tint)
                     }
-                    TextButton(title: L("Ouvrir volets", "Open Shutters"), symbol: "sun.max.fill", prominent: true, tint: Theme.alive.swiftUI) {
-                        model.fleet.setShutter(closed: false, on: selected)
+                    .frame(width: 42, height: 42)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(L("\(Format.count(selected.count, "projecteur")) sélectionné\(selected.count > 1 ? "s" : "")", "\(selected.count) projector\(selected.count > 1 ? "s" : "") selected"))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Theme.text.swiftUI)
+                        HStack(spacing: 6) {
+                            Text(brandInfo.title)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(Theme.textDim.swiftUI)
+                            if let badge = brandInfo.badge {
+                                Chip(text: badge, tint: brandInfo.tint)
+                            }
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                separator
+
+                // 1. Grouped Shutter, Mute, Freeze & Power
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionHeader(L("Action groupée — Volet & Alimentation", "Group Action — Shutter & Power"))
+                    HStack(spacing: 6) {
+                        TextButton(
+                            title: L("NOIR · Fermer (\(selected.count))", "BLACKOUT · Close (\(selected.count))"),
+                            symbol: "eye.slash.fill",
+                            prominent: allClosed,
+                            tint: Theme.accent.swiftUI
+                        ) {
+                            model.fleet.setShutter(closed: true, on: selected)
+                        }
+                        TextButton(
+                            title: L("Ouvrir volets (\(selected.count))", "Open Shutters (\(selected.count))"),
+                            symbol: "sun.max.fill",
+                            prominent: anyProjecting && !allClosed,
+                            tint: Theme.alive.swiftUI
+                        ) {
+                            model.fleet.setShutter(closed: false, on: selected)
+                        }
+                    }
+
+                    HStack(spacing: 6) {
+                        TextButton(
+                            title: allVideoMuted ? L("Vidéo coupée", "Video Muted") : L("Vidéo seule", "Video Mute"),
+                            symbol: "video.slash.fill",
+                            compact: true
+                        ) {
+                            model.fleet.setVideoMute(!allVideoMuted, on: selected)
+                        }
+                        TextButton(
+                            title: allAudioMuted ? L("Audio coupé", "Audio Muted") : L("Audio seul", "Audio Mute"),
+                            symbol: "speaker.slash.fill",
+                            compact: true
+                        ) {
+                            model.fleet.setAudioMute(!allAudioMuted, on: selected)
+                        }
+                        TextButton(
+                            title: anyFrozen ? L("Dégeler", "Unfreeze") : L("Gel (Freeze)", "Freeze"),
+                            symbol: "snowflake",
+                            prominent: anyFrozen,
+                            tint: Theme.tcp.swiftUI,
+                            compact: true
+                        ) {
+                            model.fleet.setFreeze(!anyFrozen, on: selected)
+                        }
+                    }
+
+                    HStack(spacing: 6) {
+                        TextButton(
+                            title: L("Allumer (POWR 1)", "Power On (POWR 1)"),
+                            symbol: "power",
+                            tint: Theme.alive.swiftUI,
+                            compact: true
+                        ) {
+                            model.requestPower(on: true, targets: selected)
+                        }
+                        TextButton(
+                            title: L("Mettre en veille (POWR 0)…", "Standby (POWR 0)…"),
+                            symbol: "moon.zzz.fill",
+                            tint: Theme.standby.swiftUI,
+                            compact: true
+                        ) {
+                            model.requestPower(on: false, targets: selected)
+                        }
                     }
                 }
-                HStack(spacing: 6) {
-                    TextButton(title: L("Allumer la sélection", "Power On Selected"), symbol: "power", compact: true) {
-                        model.requestPower(on: true, targets: selected)
+
+                separator
+
+                // 2. Grouped Alignment Grids & Motorized Lens Control
+                multiOpticsAndGridSection(selected, brandInfo: brandInfo)
+
+                separator
+
+                // 3. Grouped Video Inputs
+                multiInputsSection(selected)
+
+                separator
+
+                // 4. Selected Projectors List + Quick Actions
+                VStack(alignment: .leading, spacing: 7) {
+                    SectionHeader(L("Projecteurs ciblés (\(selected.count))", "Targeted Projectors (\(selected.count))")) {
+                        Button(L("Actualiser", "Refresh")) {
+                            model.fleet.refresh(selected, includeIdentity: true)
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Theme.accent.swiftUI)
                     }
-                    TextButton(title: L("Veille…", "Standby…"), symbol: "moon.zzz.fill", compact: true) {
-                        model.requestPower(on: false, targets: selected)
+
+                    ForEach(selected) { pj in
+                        HStack(spacing: 7) {
+                            Circle().fill(Theme.statusColor(pj).swiftUI).frame(width: 6, height: 6)
+                            Text(pj.displayTitle)
+                                .font(.system(size: 11.5, weight: .medium))
+                                .foregroundStyle(Theme.text.swiftUI)
+                                .lineLimit(1)
+                            Spacer(minLength: 4)
+                            if pj.activeTestPattern != .off {
+                                Chip(text: pj.activeTestPattern.shortLabel, tint: Theme.accent.swiftUI)
+                            }
+                            Text(pj.currentInputDisplayName)
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundStyle(Theme.tcp.swiftUI)
+                            Text(pj.endpointLabel)
+                                .font(.system(size: 10.5, design: .monospaced))
+                                .foregroundStyle(Theme.textDim.swiftUI)
+                            Button {
+                                model.fleet.selection.remove(pj.id)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Theme.textFaint.swiftUI)
+                            }
+                            .buttonStyle(.plain)
+                            .help(L("Retirer \(pj.displayTitle) de la sélection", "Remove \(pj.displayTitle) from selection"))
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.035)))
                     }
                 }
             }
-
-            separator
-
-            SectionHeader(L("Projecteurs sélectionnés", "Selected Projectors"))
-            ForEach(selected) { pj in
-                HStack(spacing: 8) {
-                    Circle().fill(Theme.statusColor(pj).swiftUI).frame(width: 6, height: 6)
-                    Text(pj.displayTitle).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.text.swiftUI).lineLimit(1)
-                    Spacer()
-                    Text(pj.endpointLabel).font(.system(size: 10.5, design: .monospaced)).foregroundStyle(Theme.textDim.swiftUI)
-                }
-            }
-            Spacer()
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(16)
+    }
+
+    private func multiOpticsAndGridSection(
+        _ selected: [Projector],
+        brandInfo: (title: String, badge: String?, tint: Color)
+    ) -> some View {
+        let commonPattern: OptomaTestPattern? = {
+            guard let first = selected.first?.activeTestPattern else { return nil }
+            return selected.allSatisfy({ $0.activeTestPattern == first }) ? first : nil
+        }()
+
+        return VStack(alignment: .leading, spacing: 9) {
+            SectionHeader(L("Grilles & Optique groupées", "Group Grids & Motorized Lens")) {
+                if let badge = brandInfo.badge {
+                    Chip(text: badge, tint: brandInfo.tint)
+                }
+            }
+
+            // Alignment Grids
+            VStack(alignment: .leading, spacing: 5) {
+                Text(L("Mire interne / Grille de calage simultanée (⌘G)", "Simultaneous Alignment Grid / Test Pattern (⌘G)"))
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(Theme.textDim.swiftUI)
+
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 5),
+                    GridItem(.flexible(), spacing: 5),
+                    GridItem(.flexible(), spacing: 5),
+                ], spacing: 5) {
+                    ForEach([
+                        OptomaTestPattern.off,
+                        .whiteGrid,
+                        .greenGrid,
+                        .magentaGrid,
+                        .white,
+                        .colorBars,
+                    ]) { pat in
+                        let active = commonPattern == pat
+                        let tint: Color = {
+                            switch pat {
+                            case .off: return Theme.textDim.swiftUI
+                            case .whiteGrid, .white: return Theme.text.swiftUI
+                            case .greenGrid: return Theme.alive.swiftUI
+                            case .magentaGrid: return Theme.osc.swiftUI
+                            case .black: return Theme.textDim.swiftUI
+                            case .colorBars: return Theme.accent.swiftUI
+                            }
+                        }()
+                        Button {
+                            model.fleet.setTestPattern(pat, on: selected)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: pat.symbol)
+                                    .font(.system(size: 10, weight: .semibold))
+                                Text(pat.shortLabel)
+                                    .font(.system(size: 10.5, weight: .semibold))
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 5)
+                            .foregroundStyle(active ? Theme.background.swiftUI : tint)
+                            .background(
+                                RoundedRectangle(cornerRadius: 5)
+                                    .fill(active ? tint : Color.white.opacity(0.05))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .strokeBorder(active ? tint : Color.white.opacity(0.08), lineWidth: 1)
+                                    )
+                            )
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            // Motorized Lens Shift + Focus + Zoom across all selected projectors
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(L("Décalage de lentille (Shift) / Focus / Zoom groupé", "Group Lens Shift / Focus / Zoom"))
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(Theme.textDim.swiftUI)
+                    Spacer()
+                    HStack(spacing: 3) {
+                        ForEach([1, 3, 6], id: \.self) { step in
+                            let sel = model.lensStepMultiplier == step
+                            Button {
+                                model.lensStepMultiplier = step
+                            } label: {
+                                Text("×\(step)")
+                                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .foregroundStyle(sel ? Theme.background.swiftUI : Theme.textDim.swiftUI)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(sel ? Theme.accent.swiftUI : Color.white.opacity(0.05))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                HStack(alignment: .center, spacing: 10) {
+                    VStack(spacing: 3) {
+                        VStack(spacing: 4) {
+                            multiLensPadButton(symbol: "chevron.up", action: .shiftUp, targets: selected)
+                            HStack(spacing: 4) {
+                                multiLensPadButton(symbol: "chevron.left", action: .shiftLeft, targets: selected)
+                                multiLensPadButton(symbol: "scope", action: .lensCenter, targets: selected, tint: Theme.tcp.swiftUI)
+                                multiLensPadButton(symbol: "chevron.right", action: .shiftRight, targets: selected)
+                            }
+                            multiLensPadButton(symbol: "chevron.down", action: .shiftDown, targets: selected)
+                        }
+                        .padding(6)
+                        .background(RoundedRectangle(cornerRadius: 7).fill(Color.black.opacity(0.22)))
+
+                        Text(L("↑↓←→ Clavier (⇧×3)", "↑↓←→ Keys (⇧×3)"))
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(Theme.textFaint.swiftUI)
+                    }
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 5) {
+                            Text("Focus")
+                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(Theme.textDim.swiftUI)
+                                .frame(width: 44, alignment: .leading)
+                            TextButton(title: "−", symbol: "minus.magnifyingglass", compact: true) {
+                                model.fleet.triggerLens(.focusMinus, steps: model.lensStepMultiplier, on: selected)
+                            }
+                            TextButton(title: "+", symbol: "plus.magnifyingglass", compact: true) {
+                                model.fleet.triggerLens(.focusPlus, steps: model.lensStepMultiplier, on: selected)
+                            }
+                        }
+                        HStack(spacing: 5) {
+                            Text("Zoom")
+                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(Theme.textDim.swiftUI)
+                                .frame(width: 44, alignment: .leading)
+                            TextButton(title: "−", symbol: "arrow.down.right.and.arrow.up.left", compact: true) {
+                                model.fleet.triggerLens(.zoomMinus, steps: model.lensStepMultiplier, on: selected)
+                            }
+                            TextButton(title: "+", symbol: "arrow.up.left.and.arrow.down.right", compact: true) {
+                                model.fleet.triggerLens(.zoomPlus, steps: model.lensStepMultiplier, on: selected)
+                            }
+                        }
+                        if selected.contains(where: \.isEpson) {
+                            HStack(spacing: 5) {
+                                Text(L("Distors.", "Distort."))
+                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Theme.textDim.swiftUI)
+                                    .frame(width: 44, alignment: .leading)
+                                TextButton(title: "−", symbol: "trapezoid.and.line.horizontal", compact: true) {
+                                    model.fleet.triggerLens(.distortionMinus, steps: model.lensStepMultiplier, on: selected)
+                                }
+                                TextButton(title: "+", symbol: "trapezoid.and.line.vertical", compact: true) {
+                                    model.fleet.triggerLens(.distortionPlus, steps: model.lensStepMultiplier, on: selected)
+                                }
+                            }
+                        }
+                        HStack(spacing: 5) {
+                            TextButton(title: L("Déverr. optique", "Unlock Lens"), symbol: "lock.open.fill", compact: true) {
+                                model.fleet.triggerLens(.lensUnlock, steps: 1, on: selected)
+                            }
+                            TextButton(title: L("Verr.", "Lock"), symbol: "lock.fill", compact: true) {
+                                model.fleet.triggerLens(.lensLock, steps: 1, on: selected)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func multiLensPadButton(
+        symbol: String,
+        action: OptomaLensAction,
+        targets: [Projector],
+        tint: Color = Theme.text.swiftUI
+    ) -> some View {
+        let isActive = model.activeLensAction == action
+        return Button {
+            let fast = NSEvent.modifierFlags.contains(.option) || NSEvent.modifierFlags.contains(.shift)
+            let steps = fast ? max(3, model.lensStepMultiplier * 3) : model.lensStepMultiplier
+            model.fleet.triggerLens(action, steps: steps, on: targets)
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(isActive ? Theme.background.swiftUI : tint)
+                .frame(width: 28, height: 25)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(isActive ? Theme.accent.swiftUI : Color.white.opacity(0.07))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .strokeBorder(isActive ? Theme.accent.swiftUI : Color.white.opacity(0.11), lineWidth: 1)
+                        )
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("\(action.label) → \(targets.count) VP · ↑↓←→ ou ⇧/⌥ = pas rapide")
+    }
+
+    private func multiInputsSection(_ selected: [Projector]) -> some View {
+        let inputs = model.fleet.commonInputsForSelectedProjectors
+        let sharedInput: String? = {
+            guard let first = selected.first?.currentInput else { return nil }
+            return selected.allSatisfy({ $0.currentInput == first }) ? first : nil
+        }()
+
+        return VStack(alignment: .leading, spacing: 8) {
+            SectionHeader(L("Entrée Vidéo groupée (INPT)", "Group Video Input (INPT)"))
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)], spacing: 6) {
+                ForEach(inputs) { inp in
+                    let active = sharedInput == inp.code
+                    Button {
+                        model.fleet.setInput(inp.code, on: selected)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: inp.category.symbol)
+                                .font(.system(size: 10.5, weight: .semibold))
+                                .foregroundStyle(active ? Theme.background.swiftUI : Theme.tcp.swiftUI)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(inp.displayName)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(active ? Theme.background.swiftUI : Theme.text.swiftUI)
+                                    .lineLimit(1)
+                                Text("Code \(inp.code) · \(inp.category.label)")
+                                    .font(.system(size: 9.5, design: .monospaced))
+                                    .foregroundStyle(active ? Theme.background.swiftUI.opacity(0.75) : Theme.textFaint.swiftUI)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(active ? Theme.tcp.swiftUI : Color.white.opacity(0.05))
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     private var emptySelectionPlaceholder: some View {

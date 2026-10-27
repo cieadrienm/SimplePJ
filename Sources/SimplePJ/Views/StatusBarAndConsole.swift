@@ -121,8 +121,15 @@ struct StatusBar: View {
 
             HStack(spacing: 12) {
                 Button { model.showOSCGuide = true } label: {
-                    Text(verbatim: "OSC :\(model.fleet.oscServer?.port ?? kSimplePJDefaultOSCInPort)")
-                        .foregroundStyle(Theme.osc.swiftUI)
+                    HStack(spacing: 4) {
+                        Text(verbatim: "OSC :\(model.fleet.oscServer?.port ?? kSimplePJDefaultOSCInPort)")
+                            .foregroundStyle(Theme.osc.swiftUI)
+                        if let last = model.fleet.lastOSCMessage {
+                            Text("(\(last))")
+                                .foregroundStyle(Theme.alive.swiftUI)
+                                .lineLimit(1)
+                        }
+                    }
                 }
                 .buttonStyle(.plain)
                 .help(L("Guide des commandes OSC et API HTTP", "OSC Commands and HTTP API Guide"))

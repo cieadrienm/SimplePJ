@@ -334,60 +334,58 @@ struct ProjectorCard: View {
     }
 
     private func handleSelectionTap(_ id: UUID) {
-        let flags = NSEvent.modifierFlags
-        if flags.contains(.command) {
-            if model.fleet.selection.contains(id) {
-                model.fleet.selection.remove(id)
-            } else {
-                model.fleet.selection.insert(id)
-            }
-        } else {
-            model.fleet.selection = [id]
-        }
+        model.handleProjectorClick(id)
     }
 
     @ViewBuilder
     private func projectorContextMenu(for pj: Projector) -> some View {
-        Button(pj.isShutterClosed ? L("Ouvrir le volet (AVMT 30)", "Open Shutter (AVMT 30)") : L("Fermer le volet / Noir (AVMT 31)", "Close Shutter / Blackout (AVMT 31)")) {
-            model.fleet.setShutter(closed: !pj.isShutterClosed, on: [pj])
+        let isMulti = model.fleet.selection.count > 1 && model.fleet.selection.contains(pj.id)
+        let targets = isMulti ? model.fleet.selectedProjectors : [pj]
+        let scopeSuffix = isMulti ? " (\(targets.count) VP)" : ""
+
+        Button((pj.isShutterClosed ? L("Ouvrir le volet (AVMT 30)", "Open Shutter (AVMT 30)") : L("Fermer le volet / Noir (AVMT 31)", "Close Shutter / Blackout (AVMT 31)")) + scopeSuffix) {
+            model.fleet.setShutter(closed: !pj.isShutterClosed, on: targets)
         }
-        Button(pj.power.isLit ? L("Mettre en veille (POWR 0)…", "Standby (POWR 0)…") : L("Allumer (POWR 1)", "Power On (POWR 1)")) {
-            model.requestPower(on: !pj.power.isLit, targets: [pj])
+        Button((pj.power.isLit ? L("Mettre en veille (POWR 0)…", "Standby (POWR 0)…") : L("Allumer (POWR 1)", "Power On (POWR 1)")) + scopeSuffix) {
+            model.requestPower(on: !pj.power.isLit, targets: targets)
         }
-        if pj.pjlinkClass >= 2 {
-            Button(pj.freeze ? L("Dégeler l'image (FREZ 0)", "Unfreeze Image (FREZ 0)") : L("Geler l'image (FREZ 1)", "Freeze Image (FREZ 1)")) {
-                model.fleet.setFreeze(!pj.freeze, on: [pj])
+        if targets.contains(where: { $0.pjlinkClass >= 2 }) {
+            Button((pj.freeze ? L("Dégeler l'image (FREZ 0)", "Unfreeze Image (FREZ 0)") : L("Geler l'image (FREZ 1)", "Freeze Image (FREZ 1)")) + scopeSuffix) {
+                model.fleet.setFreeze(!pj.freeze, on: targets)
             }
         }
         Divider()
-        Menu(L("Entrée vidéo", "Video Input")) {
-            ForEach(pj.availableInputs) { inp in
+        Menu(L("Entrée vidéo", "Video Input") + scopeSuffix) {
+            ForEach(model.fleet.commonInputs(for: targets)) { inp in
                 Button((pj.currentInput == inp.code ? "✓ " : "") + inp.fullLabel) {
-                    model.fleet.setInput(inp.code, on: [pj])
+                    model.fleet.setInput(inp.code, on: targets)
                 }
             }
         }
-        Menu(L("Mire & Optique (Optoma ZU / Epson EB-L)", "Test Pattern & Lens (Optoma ZU / Epson EB-L)")) {
+        Menu(L("Mire & Optique (Panasonic / Epson / Optoma)", "Test Pattern & Lens (Panasonic / Epson / Optoma)") + scopeSuffix) {
             ForEach(OptomaTestPattern.allCases) { pat in
                 Button((pj.activeTestPattern == pat ? "✓ " : "") + pat.label) {
-                    model.fleet.setTestPattern(pat, on: [pj])
+                    model.fleet.setTestPattern(pat, on: targets)
                 }
             }
             Divider()
             ForEach(OptomaLensAction.allCases) { act in
                 Button(act.label) {
-                    model.fleet.triggerLens(act, steps: 1, on: [pj])
+                    model.fleet.triggerLens(act, steps: 1, on: targets)
                 }
             }
         }
         Divider()
+        Button(L("Sélectionner tous les projecteurs de la même marque", "Select all projectors of the same brand")) {
+            model.selectSameBrand(as: pj)
+        }
         Button(L("Nommer / #grouper dans l'inspecteur…", "Rename / #tag in Inspector…")) {
             model.fleet.selection = [pj.id]
             model.revealInspector()
             model.labelFocusRequest += 1
         }
-        Button(L("Actualiser l'état PJLink", "Refresh PJLink Status")) {
-            model.fleet.refresh([pj], includeIdentity: true)
+        Button(L("Actualiser l'état PJLink", "Refresh PJLink Status") + scopeSuffix) {
+            model.fleet.refresh(targets, includeIdentity: true)
         }
         if pj.connectionState == .authRequired {
             Button(L("Tester les mots de passe d'usine…", "Test Factory Passwords…")) {
@@ -397,18 +395,18 @@ struct ProjectorCard: View {
         Button(L("Ouvrir l'interface Web (http://\(pj.ip))", "Open Web Interface (http://\(pj.ip))")) {
             model.openWebInterface(pj)
         }
-        if pj.mac != nil {
-            Button("Wake-on-LAN") {
-                model.wakeProjectors([pj])
+        if targets.contains(where: { $0.mac != nil }) {
+            Button("Wake-on-LAN" + scopeSuffix) {
+                model.wakeProjectors(targets)
             }
         }
         Button(L("Copier l'adresse IP", "Copy IP Address")) {
-            AppModel.copyToPasteboard(pj.endpointLabel)
+            AppModel.copyToPasteboard(targets.map(\.endpointLabel).joined(separator: "\n"))
             model.flash(L("Adresse copiée", "Address copied"))
         }
         Divider()
-        Button(L("Retirer du parc", "Remove from Fleet"), role: .destructive) {
-            model.fleet.removeProjectors(ids: [pj.id])
+        Button(L("Retirer du parc", "Remove from Fleet") + scopeSuffix, role: .destructive) {
+            model.fleet.removeProjectors(ids: Set(targets.map(\.id)))
         }
     }
 }
@@ -681,15 +679,7 @@ struct ProjectorTableView: View {
         .overlay(alignment: .bottom) { Rectangle().fill(Color.white.opacity(0.03)).frame(height: 1) }
         .contentShape(Rectangle())
         .onTapGesture {
-            if NSEvent.modifierFlags.contains(.command) {
-                if model.fleet.selection.contains(pj.id) {
-                    model.fleet.selection.remove(pj.id)
-                } else {
-                    model.fleet.selection.insert(pj.id)
-                }
-            } else {
-                model.fleet.selection = [pj.id]
-            }
+            model.handleProjectorClick(pj.id)
         }
     }
 

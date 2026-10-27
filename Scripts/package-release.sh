@@ -5,6 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+export NOTARIZE="${NOTARIZE:-1}"
 APP_PATH="$(ARCH=universal ./Scripts/bundle.sh release | tail -1)"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist")"
 BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PATH/Contents/Info.plist")"
@@ -13,11 +14,11 @@ INTEL_APP_PATH="build/SimplePJ-Intel/SimplePJ.app"
 INTEL_ZIP_PATH="build/SimplePJ-${VERSION}-intel-x86_64.zip"
 
 rm -f "$ZIP_PATH" "$INTEL_ZIP_PATH"
-/usr/bin/ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
+/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"
 SHA256="$(shasum -a 256 "$ZIP_PATH" | awk '{print $1}')"
 
 ARCH=x86_64 INSTALL=0 APP="$INTEL_APP_PATH" ./Scripts/bundle.sh release >/dev/null
-/usr/bin/ditto -c -k --keepParent "$INTEL_APP_PATH" "$INTEL_ZIP_PATH"
+/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$INTEL_APP_PATH" "$INTEL_ZIP_PATH"
 INTEL_SHA256="$(shasum -a 256 "$INTEL_ZIP_PATH" | awk '{print $1}')"
 
 cat <<EOF

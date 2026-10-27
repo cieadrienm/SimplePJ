@@ -198,6 +198,50 @@ final class AppModel {
 
     // MARK: - Selection & Clipboard
 
+    var lastClickedProjectorID: UUID? = nil
+
+    func handleProjectorClick(_ id: UUID, flags: NSEvent.ModifierFlags = NSEvent.modifierFlags) {
+        if flags.contains(.shift), let anchor = lastClickedProjectorID ?? fleet.selection.first {
+            let visible = fleet.visibleProjectors.map(\.id)
+            if let i1 = visible.firstIndex(of: anchor), let i2 = visible.firstIndex(of: id) {
+                let range = min(i1, i2)...max(i1, i2)
+                if flags.contains(.command) {
+                    fleet.selection.formUnion(visible[range])
+                } else {
+                    fleet.selection = Set(visible[range])
+                }
+                lastClickedProjectorID = id
+                return
+            }
+        }
+        if flags.contains(.command) {
+            if fleet.selection.contains(id) {
+                fleet.selection.remove(id)
+            } else {
+                fleet.selection.insert(id)
+            }
+        } else {
+            fleet.selection = [id]
+        }
+        lastClickedProjectorID = id
+    }
+
+    func selectSameBrand(as pj: Projector) {
+        let peers: [Projector]
+        if pj.isPanasonic {
+            peers = fleet.projectors.filter(\.isPanasonic)
+        } else if pj.isEpson {
+            peers = fleet.projectors.filter(\.isEpson)
+        } else if pj.isOptoma {
+            peers = fleet.projectors.filter(\.isOptoma)
+        } else {
+            let mfg = (pj.manufacturer ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            peers = mfg.isEmpty ? [pj] : fleet.projectors.filter { ($0.manufacturer ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == mfg }
+        }
+        fleet.selection = Set(peers.map(\.id))
+        revealInspector()
+    }
+
     func selectAll() {
         fleet.selection = Set(fleet.visibleProjectors.map(\.id))
     }

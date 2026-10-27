@@ -222,18 +222,21 @@ struct OSCGuideSheet: View {
     @Bindable var model: AppModel
     let close: () -> Void
 
-    private static var oscExamples: [(String, String, String)] {
+    private static var oscExamples: [(String, String, String, [OSCCodec.Value])] {
         [
-            ("/simplepj/all/shutter", L("1 ou 0", "1 or 0"), L("Fermer (1 = Noir plateau) ou ouvrir (0) tous les volets", "Close (1 = Stage Blackout) or open (0) all shutters")),
-            ("/simplepj/all/power", L("1 ou 0", "1 or 0"), L("Allumer (1) ou mettre en veille (0) tout le parc", "Power on (1) or standby (0) entire fleet")),
-            ("/simplepj/all/freeze", L("1 ou 0", "1 or 0"), L("Geler (1) ou dégeler (0) l'image sur tout le parc (Classe 2)", "Freeze (1) or unfreeze (0) image on entire fleet (Class 2)")),
-            ("/simplepj/all/input", L("\"31\" ou \"HDMI 1\"", "\"31\" or \"HDMI 1\""), L("Basculer l'entrée de tous les projecteurs", "Switch input on all projectors")),
-            ("/simplepj/group/face/shutter", L("1 ou 0", "1 or 0"), L("Fermer ou ouvrir les volets du groupe #face", "Close or open shutters of group #face")),
-            ("/simplepj/group/cyclo/shutter", L("1 ou 0", "1 or 0"), L("Fermer ou ouvrir les volets du groupe #cyclo", "Close or open shutters of group #cyclo")),
-            ("/simplepj/pj/1/shutter", L("1 ou 0", "1 or 0"), L("Piloter le projecteur n°1 (ou par nom / IP)", "Control projector #1 (or by name / IP)")),
-            ("/simplepj/pj/face-cour/input", "\"52\"", L("Basculer l'entrée du projecteur nommé « Face Cour »", "Switch input on projector named \"Face Cour\"")),
-            ("/simplepj/pj/1/raw", "\"%1LAMP ?\"", L("Envoyer une commande PJLink brute", "Send raw PJLink command")),
-            ("/simplepj/refresh", L("(aucun)", "(none)"), L("Relancer une interrogation immédiate du parc", "Trigger an immediate fleet poll")),
+            ("/blackout", L("(aucun ou 1)", "(none or 1)"), L("NOIR PLATEAU : fermer tous les volets (ou /simplepj/all/shutter 1)", "STAGE BLACKOUT: close all shutters (or /simplepj/all/shutter 1)"), [.int(1)]),
+            ("/open", L("(aucun ou 1)", "(none or 1)"), L("Ouvrir tous les volets (ou /simplepj/all/shutter 0)", "Open all shutters (or /simplepj/all/shutter 0)"), [.int(1)]),
+            ("/grid", L("1 | 0 | white-grid", "1 | 0 | white-grid"), L("Afficher / masquer la grille de calage sur tous les VP", "Show / hide alignment grid on all projectors"), [.string("white-grid")]),
+            ("/input", L("\"31\" ou \"HDMI 1\"", "\"31\" or \"HDMI 1\""), L("Basculer l'entrée vidéo de tous les projecteurs", "Switch video input on all projectors"), [.string("31")]),
+            ("/power", L("1 ou 0", "1 or 0"), L("Allumer (1) ou mettre en veille (0) tout le parc", "Power on (1) or standby (0) entire fleet"), [.int(1)]),
+            ("/freeze", L("1 ou 0", "1 or 0"), L("Geler (1) ou dégeler (0) l'image sur tout le parc (Classe 2)", "Freeze (1) or unfreeze (0) image on entire fleet (Class 2)"), [.int(1)]),
+            ("/selected/grid", L("1 | 0 | green-grid", "1 | 0 | green-grid"), L("Grille de calage sur les VP sélectionnés dans SimplePJ", "Alignment grid on projectors currently selected in SimplePJ"), [.string("white-grid")]),
+            ("/selected/lens", L("up | down | left | right | center", "up | down | left | right | center"), L("Décalage de lentille (Lens Shift / Focus / Zoom) sur la sélection", "Lens Shift / Focus / Zoom on current selection"), [.string("up")]),
+            ("/group/face/shutter", L("1 ou 0", "1 or 0"), L("Fermer (1) ou ouvrir (0) les volets du groupe #face", "Close (1) or open (0) shutters of group #face"), [.int(1)]),
+            ("/group/face/grid", L("1 ou 0", "1 or 0"), L("Afficher (1) ou masquer (0) la grille du groupe #face", "Show (1) or hide (0) grid on group #face"), [.int(1)]),
+            ("/1/shutter", L("1 ou 0", "1 or 0"), L("Volet du projecteur n°1 (aussi /pj/1/shutter ou par nom/IP)", "Shutter of projector #1 (also /pj/1/shutter or by name/IP)"), [.int(1)]),
+            ("/1/lens", L("up | down | focus+ | zoom+", "up | down | focus+ | zoom+"), L("Optique motorisée du projecteur n°1 (pas optionnel en 2e arg)", "Motorized lens of projector #1 (optional steps as 2nd arg)"), [.string("up"), .int(1)]),
+            ("/refresh", L("(aucun)", "(none)"), L("Relancer une interrogation immédiate de tout le parc", "Trigger an immediate fleet poll"), []),
         ]
     }
 
@@ -255,53 +258,71 @@ struct OSCGuideSheet: View {
                     Text(L("Pilotage OSC, API HTTP & Serveur MCP — SimplePJ", "OSC Control, HTTP API & MCP Server — SimplePJ"))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Theme.text.swiftUI)
-                    Text(L("Pilotage des vidéoprojecteurs depuis OSCScore, Montage, eMotion, QLab, Chataigne ou un agent MCP.", "Control projectors from OSCScore, Montage, eMotion, QLab, Chataigne, or an MCP agent."))
+                    Text(L("Pilotage direct en UDP (port :\(oscPort)) depuis QLab, Millumin, Chataigne, TouchOSC, OSCScore, eMotion ou Max/MSP. Le préfixe /simplepj est optionnel.", "Direct UDP control (port :\(oscPort)) from QLab, Millumin, Chataigne, TouchOSC, OSCScore, eMotion, or Max/MSP. Leading /simplepj prefix is optional."))
                         .font(.system(size: 11.5))
                         .foregroundStyle(Theme.textDim.swiftUI)
                 }
                 Spacer()
+                if let last = model.fleet.lastOSCMessage {
+                    Chip(text: "RX \(last)", tint: Theme.alive.swiftUI)
+                }
                 Chip(text: "OSC UDP :\(oscPort)", tint: Theme.osc.swiftUI, filled: true)
                 Chip(text: "HTTP/MCP :\(model.fleet.httpPort)", tint: Theme.tcp.swiftUI)
             }
 
             Rectangle().fill(Theme.separator.swiftUI).frame(height: 1)
 
-            SectionHeader(L("Adresses OSC entrantes (cliquer pour copier)", "Incoming OSC Addresses (click to copy)"))
+            SectionHeader(L("Adresses OSC entrantes (cliquer pour copier, ▶ pour tester)", "Incoming OSC Addresses (click to copy, ▶ to test)"))
             ScrollView {
                 VStack(spacing: 5) {
-                    ForEach(Self.oscExamples, id: \.0) { addr, arg, desc in
-                        Button {
-                            AppModel.copyToPasteboard(addr)
-                            model.flash(L("Copié : \(addr)", "Copied: \(addr)"))
-                        } label: {
-                            HStack(spacing: 10) {
-                                Text(addr)
-                                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                    ForEach(Self.oscExamples, id: \.0) { addr, arg, desc, testArgs in
+                        HStack(spacing: 8) {
+                            Button {
+                                model.fleet.handleOSCMessage(OSCCodec.Message(address: addr, arguments: testArgs))
+                            } label: {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 9.5, weight: .bold))
                                     .foregroundStyle(Theme.osc.swiftUI)
-                                    .frame(width: 225, alignment: .leading)
-                                Text(arg)
-                                    .font(.system(size: 10.5, design: .monospaced))
-                                    .foregroundStyle(Theme.accent.swiftUI)
-                                    .frame(width: 105, alignment: .leading)
-                                Text(desc)
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(Theme.textDim.swiftUI)
-                                    .lineLimit(1)
-                                Spacer()
-                                Image(systemName: "doc.on.doc")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(Theme.textFaint.swiftUI)
+                                    .frame(width: 22, height: 22)
+                                    .background(RoundedRectangle(cornerRadius: 4).fill(Theme.osc.swiftUI.opacity(0.15)))
                             }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.04)))
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+                            .help(L("Tester cette commande OSC maintenant", "Test this OSC command now"))
+
+                            Button {
+                                AppModel.copyToPasteboard(addr)
+                                model.flash(L("Copié : \(addr)", "Copied: \(addr)"))
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Text(addr)
+                                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                                        .foregroundStyle(Theme.osc.swiftUI)
+                                        .frame(width: 175, alignment: .leading)
+                                    Text(arg)
+                                        .font(.system(size: 10.5, design: .monospaced))
+                                        .foregroundStyle(Theme.accent.swiftUI)
+                                        .frame(width: 145, alignment: .leading)
+                                        .lineLimit(1)
+                                    Text(desc)
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(Theme.textDim.swiftUI)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Image(systemName: "doc.on.doc")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(Theme.textFaint.swiftUI)
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.04)))
                     }
                 }
             }
-            .frame(height: 235)
+            .frame(height: 255)
 
             SectionHeader(L("Serveur MCP (simplepj-mcp), AppleScript, CLI & API HTTP", "MCP Server (simplepj-mcp), AppleScript, CLI & HTTP API"))
             VStack(alignment: .leading, spacing: 4) {

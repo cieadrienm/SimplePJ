@@ -112,6 +112,7 @@ final class FleetController {
     var exchanges: [PJLinkExchange] = []
     var statusMessage: String = L("Prêt", "Ready")
     var lastError: String? = nil
+    var lastOSCMessage: String? = nil
 
     // Simulator & External servers
     let demoRig = PJLinkDemoRig()
@@ -254,9 +255,8 @@ final class FleetController {
         return counts.map { ($0.key, $0.value) }.sorted { $0.tag < $1.tag }
     }
 
-    /// Common inputs across `activeTargets` for quick group switching.
-    var commonInputsForActiveTargets: [PJLinkInput] {
-        let targets = activeTargets
+    /// Union of inputs across the given projectors for quick group switching.
+    func commonInputs(for targets: [Projector]) -> [PJLinkInput] {
         guard let first = targets.first else { return PJLinkInput.standardDefaults }
         if targets.count == 1 { return first.availableInputs }
         var seen: Set<String> = []
@@ -267,6 +267,21 @@ final class FleetController {
             }
         }
         return list.isEmpty ? PJLinkInput.standardDefaults : list
+    }
+
+    /// Common inputs across `activeTargets` for quick group switching.
+    var commonInputsForActiveTargets: [PJLinkInput] {
+        commonInputs(for: activeTargets)
+    }
+
+    /// Common inputs across all projectors in the fleet (for `StageMasterBar`).
+    var commonInputsForAllProjectors: [PJLinkInput] {
+        commonInputs(for: projectors)
+    }
+
+    /// Common inputs across `selectedProjectors` (for multi-selection inspector).
+    var commonInputsForSelectedProjectors: [PJLinkInput] {
+        commonInputs(for: selectedProjectors)
     }
 
     var onlineCount: Int { projectors.filter { $0.connectionState == .online }.count }
@@ -300,11 +315,21 @@ final class FleetController {
     }
 
     func setVideoMute(_ muted: Bool, on projector: Projector) {
-        executeOnTargets([projector], commands: [.shutterVideoMute(muted), .shutterQuery])
+        setVideoMute(muted, on: [projector])
+    }
+
+    func setVideoMute(_ muted: Bool, on targets: [Projector]) {
+        guard !targets.isEmpty else { return }
+        executeOnTargets(targets, commands: [.shutterVideoMute(muted), .shutterQuery])
     }
 
     func setAudioMute(_ muted: Bool, on projector: Projector) {
-        executeOnTargets([projector], commands: [.shutterAudioMute(muted), .shutterQuery])
+        setAudioMute(muted, on: [projector])
+    }
+
+    func setAudioMute(_ muted: Bool, on targets: [Projector]) {
+        guard !targets.isEmpty else { return }
+        executeOnTargets(targets, commands: [.shutterAudioMute(muted), .shutterQuery])
     }
 
     func setPower(on: Bool, on targets: [Projector]? = nil) {
@@ -790,8 +815,12 @@ final class FleetController {
 
     func startOSCServer(port: UInt16? = nil) {
         oscServer?.stop()
+        let savedPort = persistEnabled ? (UserDefaults.standard.object(forKey: defaultsPrefix + "oscInPort") as? Int).flatMap(UInt16.init) : nil
         let envPort = ProcessInfo.processInfo.environment["SIMPLEPJ_OSC_IN_PORT"].flatMap(UInt16.init)
-        let targetPort = port ?? envPort ?? kSimplePJDefaultOSCInPort
+        let targetPort = port ?? envPort ?? savedPort ?? kSimplePJDefaultOSCInPort
+        if let port, persistEnabled {
+            UserDefaults.standard.set(Int(port), forKey: defaultsPrefix + "oscInPort")
+        }
         let server = OSCUDPServer(port: targetPort) { [weak self] message in
             Task { @MainActor [weak self] in
                 self?.handleOSCMessage(message)
@@ -802,70 +831,183 @@ final class FleetController {
     }
 
     func handleOSCMessage(_ msg: OSCCodec.Message) {
-        let parts = msg.address.split(separator: "/").map(String.init)
-        guard parts.first == "simplepj", parts.count >= 2 else { return }
+        var parts = msg.address.split(separator: "/").map(String.init)
+        guard !parts.isEmpty else { return }
 
-        let firstArgBool = msg.arguments.first?.boolValue
-        let firstArgStr = msg.arguments.first?.stringValue
+        // Allow both `/simplepj/...` and ultra-short root addresses (`/shutter`, `/all/shutter`, `/1/grid`, etc.)
+        if parts.first?.lowercased() == "simplepj" {
+            parts.removeFirst()
+        }
+        guard !parts.isEmpty else { return }
 
-        if parts[1] == "refresh" {
+        let argSummary = msg.arguments.map(\.stringValue).joined(separator: " ")
+        let formattedOSC = argSummary.isEmpty ? msg.address : "\(msg.address) \(argSummary)"
+        self.lastOSCMessage = formattedOSC
+
+        if parts[0].lowercased() == "refresh" {
+            recordOSCExchange(tx: formattedOSC, rx: "refresh (\(projectors.count) VP)")
             refreshAll(includeIdentity: false)
             return
         }
 
         let targets: [Projector]
         let action: String
-        if parts[1] == "all", parts.count >= 3 {
+        let subAction: String?
+
+        let head = parts[0].lowercased()
+        if head == "all", parts.count >= 2 {
             targets = projectors
-            action = parts[2].lowercased()
-        } else if parts[1] == "group", parts.count >= 4 {
-            let tag = "#" + parts[2].lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+            action = parts[1].lowercased()
+            subAction = parts.count >= 3 ? parts[2] : nil
+        } else if head == "selected" || head == "sel", parts.count >= 2 {
+            targets = selectedProjectors.isEmpty ? projectors : selectedProjectors
+            action = parts[1].lowercased()
+            subAction = parts.count >= 3 ? parts[2] : nil
+        } else if head == "group", parts.count >= 3 {
+            let tag = "#" + parts[1].lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "#"))
             targets = projectors.filter { $0.tags.contains(tag) }
-            action = parts[3].lowercased()
-        } else if parts[1] == "pj", parts.count >= 4 {
-            let key = parts[2].lowercased()
+            action = parts[2].lowercased()
+            subAction = parts.count >= 4 ? parts[3] : nil
+        } else if head == "pj", parts.count >= 3 {
+            let key = parts[1].lowercased()
             targets = matchProjectors(byKey: key)
-            action = parts[3].lowercased()
+            action = parts[2].lowercased()
+            subAction = parts.count >= 4 ? parts[3] : nil
+        } else if parts.count >= 2, !matchProjectors(byKey: head).isEmpty {
+            // Direct `/1/shutter 1` or `/face-cour/grid 1`
+            targets = matchProjectors(byKey: head)
+            action = parts[1].lowercased()
+            subAction = parts.count >= 3 ? parts[2] : nil
         } else {
+            // Direct root command on all projectors: `/shutter 1`, `/blackout`, `/open`, `/grid 1`, `/lens up`, `/input 31`
+            targets = projectors
+            action = head
+            subAction = parts.count >= 2 ? parts[1] : nil
+        }
+
+        guard !targets.isEmpty else {
+            recordOSCExchange(tx: formattedOSC, rx: "0 target", isError: true)
             return
         }
 
-        guard !targets.isEmpty else { return }
+        let firstArgBool = msg.arguments.first?.boolValue
+        let firstArgStr = msg.arguments.first?.stringValue ?? subAction
+
         switch action {
-        case "shutter", "blackout", "avmt":
-            let close = firstArgBool ?? true
-            setShutter(closed: close, on: targets)
-        case "power", "powr":
-            if let on = firstArgBool {
-                setPower(on: on, on: targets)
+        case "shutter", "avmt":
+            let close: Bool
+            if let sub = subAction?.lowercased() {
+                close = !(sub == "open" || sub == "0" || sub == "off" || sub == "ouvert" || sub == "unmute")
+            } else {
+                close = firstArgBool ?? true
             }
+            recordOSCExchange(tx: formattedOSC, rx: "AVMT \(close ? "31" : "30") → \(targets.count) VP")
+            setShutter(closed: close, on: targets)
+
+        case "blackout", "noir", "close", "mute":
+            let close = firstArgBool ?? true
+            recordOSCExchange(tx: formattedOSC, rx: "AVMT \(close ? "31" : "30") → \(targets.count) VP")
+            setShutter(closed: close, on: targets)
+
+        case "open", "unblank", "unmute":
+            let open = firstArgBool ?? true
+            recordOSCExchange(tx: formattedOSC, rx: "AVMT \(open ? "30" : "31") → \(targets.count) VP")
+            setShutter(closed: !open, on: targets)
+
+        case "power", "powr":
+            let on: Bool
+            if let sub = subAction?.lowercased() {
+                on = (sub == "on" || sub == "1" || sub == "true")
+            } else {
+                on = firstArgBool ?? true
+            }
+            recordOSCExchange(tx: formattedOSC, rx: "POWR \(on ? "1" : "0") → \(targets.count) VP")
+            setPower(on: on, on: targets)
+
+        case "on", "poweron":
+            recordOSCExchange(tx: formattedOSC, rx: "POWR 1 → \(targets.count) VP")
+            setPower(on: true, on: targets)
+
+        case "standby", "off", "poweroff":
+            recordOSCExchange(tx: formattedOSC, rx: "POWR 0 → \(targets.count) VP")
+            setPower(on: false, on: targets)
+
         case "freeze", "frez":
-            let frz = firstArgBool ?? true
+            let frz: Bool
+            if let sub = subAction?.lowercased() {
+                frz = !(sub == "0" || sub == "off" || sub == "false")
+            } else {
+                frz = firstArgBool ?? true
+            }
+            recordOSCExchange(tx: formattedOSC, rx: "FREZ \(frz ? "1" : "0") → \(targets.count) VP")
             setFreeze(frz, on: targets)
+
         case "input", "inpt":
             if let code = firstArgStr {
-                setInput(resolveInputCode(code, for: targets.first), on: targets)
+                let resolved = resolveInputCode(code, for: targets.first)
+                recordOSCExchange(tx: formattedOSC, rx: "INPT \(resolved) → \(targets.count) VP")
+                setInput(resolved, on: targets)
             }
+
         case "raw":
-            if let raw = firstArgStr, let first = targets.first {
-                sendRawCommand(raw, to: first)
+            if let raw = firstArgStr {
+                recordOSCExchange(tx: formattedOSC, rx: "RAW \(raw) → \(targets.count) VP")
+                for pj in targets {
+                    sendRawCommand(raw, to: pj)
+                }
             }
+
         case "pattern", "grid", "mire":
             if let str = firstArgStr, let pat = OptomaTestPattern.parse(str) {
+                recordOSCExchange(tx: formattedOSC, rx: "GRID \(pat.shortLabel) → \(targets.count) VP")
                 setTestPattern(pat, on: targets)
             } else if let b = firstArgBool {
-                setTestPattern(b ? .whiteGrid : .off, on: targets)
+                let pat: OptomaTestPattern = b ? .whiteGrid : .off
+                recordOSCExchange(tx: formattedOSC, rx: "GRID \(pat.shortLabel) → \(targets.count) VP")
+                setTestPattern(pat, on: targets)
+            } else {
+                // Toggle grid if called with no arguments (`/grid` or `/simplepj/all/grid`)
+                let anyGrid = targets.contains { $0.activeTestPattern != .off }
+                let pat: OptomaTestPattern = anyGrid ? .off : .whiteGrid
+                recordOSCExchange(tx: formattedOSC, rx: "GRID \(pat.shortLabel) → \(targets.count) VP")
+                setTestPattern(pat, on: targets)
             }
-        case "lens", "optics", "focus", "zoom":
+
+        case "lens", "optics", "shift", "focus", "zoom", "distortion":
             if let str = firstArgStr {
-                let token = (action == "focus" || action == "zoom") && !str.hasPrefix(action) ? "\(action)\(str)" : str
+                let token: String
+                if (action == "focus" || action == "zoom" || action == "distortion") && !str.lowercased().hasPrefix(action) {
+                    token = "\(action)\(str)"
+                } else {
+                    token = str
+                }
                 if let lensAct = OptomaLensAction.parse(token) {
-                    let steps = msg.arguments.count > 1 ? (Int(msg.arguments[1].stringValue) ?? 1) : 1
+                    let stepArgIdx = (subAction != nil) ? 0 : 1
+                    let steps = msg.arguments.count > stepArgIdx ? (Int(msg.arguments[stepArgIdx].stringValue) ?? 1) : 1
+                    recordOSCExchange(tx: formattedOSC, rx: "LENS \(lensAct.rawValue) ×\(steps) → \(targets.count) VP")
                     triggerLens(lensAct, steps: steps, on: targets)
                 }
             }
+
         default:
             break
+        }
+    }
+
+    private func recordOSCExchange(tx: String, rx: String, isError: Bool = false) {
+        let port = oscServer?.port ?? kSimplePJDefaultOSCInPort
+        exchanges.append(
+            PJLinkExchange(
+                projectorIP: "UDP :\(port)",
+                projectorTitle: "OSC",
+                tx: tx,
+                rx: rx,
+                durationMs: 0.1,
+                isError: isError
+            )
+        )
+        if exchanges.count > 400 {
+            exchanges.removeFirst(exchanges.count - 400)
         }
     }
 
