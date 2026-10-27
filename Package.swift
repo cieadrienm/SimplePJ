@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "SimplePJ",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v14)],
     products: [
         .library(name: "SimplePJCore", targets: ["SimplePJCore"]),
         .library(name: "SimplePJMCPCore", targets: ["SimplePJMCPCore"]),

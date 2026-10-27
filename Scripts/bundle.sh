@@ -12,8 +12,18 @@ if [ ! -f Resources/AppIcon.icns ]; then
     swift Scripts/make-icon.swift
 fi
 
-swift build -c "$CONFIG"
-BIN="$(swift build -c "$CONFIG" --show-bin-path)"
+ARCH="${ARCH:-$([ "$CONFIG" = release ] && echo universal || echo native)}"
+case "$ARCH" in
+    universal) ARCH_FLAGS="--arch arm64 --arch x86_64" ;;
+    x86_64|intel) ARCH_FLAGS="--arch x86_64" ;;
+    arm64) ARCH_FLAGS="--arch arm64" ;;
+    *) ARCH_FLAGS="" ;;
+esac
+
+# shellcheck disable=SC2086
+swift build -c "$CONFIG" $ARCH_FLAGS
+# shellcheck disable=SC2086
+BIN="$(swift build -c "$CONFIG" $ARCH_FLAGS --show-bin-path)"
 APP="${APP:-build/SimplePJ.app}"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -40,7 +50,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleVersion</key><string>@BUILD@</string>
     <key>CFBundleDevelopmentRegion</key><string>fr</string>
     <key>CFBundleLocalizations</key><array><string>fr</string><string>en</string></array>
-    <key>LSMinimumSystemVersion</key><string>15.0</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSAppleScriptEnabled</key><true/>
